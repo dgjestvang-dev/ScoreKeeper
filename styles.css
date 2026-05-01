@@ -230,6 +230,18 @@ button,
   touch-action: manipulation;
 }
 
+button:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+
+button:disabled:hover,
+button:disabled:active {
+    transform: none;
+    background-color: inherit;
+}
+
 
 
 h1  {

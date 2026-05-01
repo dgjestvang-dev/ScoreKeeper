@@ -18,6 +18,8 @@ let matchStats;
 let resetMatchBtn;
 let saveMatchBtn;
 
+let hasStarted = false;
+
 
 export function initStartKamp() {
     
@@ -43,8 +45,6 @@ export function initStartKamp() {
     }
 
     controlsEl.addEventListener("click", onStatButtonClick);
-
-
 
 
     // --- Query DOM elements (view is now active) ---
@@ -82,59 +82,90 @@ export function initStartKamp() {
     renderScore();
     renderStatsSummary();
 
-    updateStartStopButton();
-    updateNextHalfButton();
-    updateStatControls();
-
     startStopBtn.addEventListener("click", onStartStopClick);
     nextHalfBtn.addEventListener("click", onNextHalfClick);
     resetMatchBtn.addEventListener("click", onResetMatchClick);
     saveMatchBtn.addEventListener("click", onSaveMatchClick);
+
+    // ✅ Force final button state after DOM settles
+    requestAnimationFrame(() => {
+    updateMatchControls();
+});
 }
 
 
+
+
+function reconcileClockState() {
+    if (clock.isExpired() && clock.isRunning()) {
+        clock.pause();
+        stopTicking();
+    }
+}
+
 function onStartStopClick() {
+    reconcileClockState();
+
     if (clock.isRunning()) {
         clock.pause();
         stopTicking();
     } else {
         clock.start();
+        hasStarted = true;
         startTicking();
     }
 
-    updateStartStopButton();
-    updateStatControls();
+    updateMatchControls();
 }
 
 
-function updateStartStopButton() {
-    if (!startStopBtn) return;
 
-    const labelEl = startStopBtn.querySelector(".label");
-    if (!labelEl) return;
+   function updateMatchControls() {
+    // ✅ ALWAYS reconcile state first
+    reconcileClockState();
 
     const running = clock.isRunning();
-    const half = clock.getCurrentHalf();
     const expired = clock.isExpired();
+    const half = clock.getCurrentHalf();
 
-    const firstHalfEnded = expired && half === 1;
-    const matchFinished = expired && half === 2;
+    /* ───────── Start / Stop ───────── */
 
-    // Disable when half is over or match is finished
-    startStopBtn.disabled = firstHalfEnded || matchFinished;
+    if (expired && half === 2) {
+        startStopBtn.disabled = true;
+        startStopBtn.querySelector(".label").textContent = "Slutt";
+    } else if (expired && half === 1) {
+        startStopBtn.disabled = true;
+        startStopBtn.querySelector(".label").textContent = "Pause";
+    } else {
+        startStopBtn.disabled = false;
+        startStopBtn.querySelector(".label").textContent =
+            running ? "Stopp" : "Start";
+    }
 
-    // Visual running state
     startStopBtn.classList.toggle("running", running);
 
-    // Label logic
-    if (matchFinished) {
-        labelEl.textContent = "Slutt";
-    } else if (firstHalfEnded) {
-        labelEl.textContent = "Pause";
-    } else {
-        labelEl.textContent = running ? "Stopp" : "Start";
-    }
+    /* ───────── Next half ───────── */
+
+    nextHalfBtn.disabled = !(hasStarted && expired && !running && half === 1);
+
+
+    /* ───────── Stats ───────── */
+
+    updateStatControls();
+
+    
+
+    console.log("Match control state", {
+    expired,
+    running,
+    half,
+    resetHalfDisabled: nextHalfBtn.disabled
+    
+});
 }
+
+
+
 
 
 function formatTime(seconds) {
@@ -150,11 +181,15 @@ function renderClock() {
 
 
 
+
 document.addEventListener("visibilitychange", () => {
     if (!document.hidden) {
+        reconcileClockState();
         renderClock();
+        updateMatchControls();
     }
-});
+})
+
 
 
 
@@ -172,20 +207,15 @@ function renderHalf() {
 
 
 
+
+
 function startTicking() {
-    if (tickIntervalId !== null) return; // already ticking
+    if (tickIntervalId !== null) return;
 
     tickIntervalId = setInterval(() => {
-        clock.tick();
+        reconcileClockState();
         renderClock();
-
-        // stop automatically if time runs out
-        if (clock.isExpired()) {
-            stopTicking();
-            updateStartStopButton();
-            updateNextHalfButton();
-            updateStatControls()
-        }
+        updateMatchControls();
     }, 1000);
 }
 
@@ -197,25 +227,28 @@ function stopTicking() {
 }
 
 
+
 //Neste omgang knappen
 function onNextHalfClick() {
+    // Defensive guard
+    if (
+        clock.getCurrentHalf() !== 1 ||
+        !clock.isExpired() ||
+        clock.isRunning()
+    ) {
+        return;
+    }
+
     clock.resetForNextHalf();
 
     renderClock();
     renderHalf();
-    updateStartStopButton();
-    updateNextHalfButton();
+
+    updateMatchControls();
 }
 
 
-function updateNextHalfButton() {
-    const canAdvance =
-        clock.getCurrentHalf() === 1 &&
-        clock.isExpired() &&
-        !clock.isRunning();
 
-    nextHalfBtn.disabled = !canAdvance;
-}
 
 // ONE click handler for all stat buttons
 function onStatButtonClick(event) {
@@ -373,6 +406,7 @@ function onResetMatchClick() {
 
     // 3️⃣ Reset stats state
     matchStats.reset();
+    hasStarted = false; 
 
     // 4️⃣ Re-render everything
     renderClock();
@@ -381,9 +415,7 @@ function onResetMatchClick() {
     renderStatsSummary();
 
     // 5️⃣ Update buttons
-    updateStartStopButton();
-    updateNextHalfButton();
-    updateStatControls();
+    updateMatchControls();
 }
 
 
