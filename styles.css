@@ -1,0 +1,895 @@
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+
+
+
+/* 
+    The body is set to be a flex container to center the phone frame both horizontally and vertically.
+    The background color is a dark gray to simulate a desktop backdrop, and a clean sans-serif font is used for any text.
+*/
+body {
+    margin: 0;
+    min-height: 100vh;
+    
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    background-color: #aaaaaa; /* desktop backdrop */
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* 
+    The viewport is a full-screen container that centers the phone frame. 
+    It uses flexbox to align its content and has overflow hidden to prevent any content from spilling out of the viewport.
+*/
+
+.viewport {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    width: 100vw;
+    
+    min-height: 100vh;   /* desktop fallback */
+    min-height: 100dvh;  /* ✅ modern browsers / iOS */
+
+
+    overflow: hidden;
+}
+
+
+
+/*
+    The phone frame is styled to have a specific width and height that resembles a modern smartphone. 
+    It has a solid border to define its edges and rounded corners for a more realistic look. 
+    The background color is a light gray to contrast with the dark desktop backdrop, and overflow is set to hidden to ensure that any content inside the phone frame does not spill out.
+*/
+.phone-frame {
+    width: 402px;
+    height: 874px;
+
+    border: 1px solid #000;
+    border-radius: 8px;
+
+    background-color: #e0e0e0;
+    overflow: hidden; /* CRITICAL */
+
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+    
+    position: relative;
+
+   /*   The transform property is used to scale the phone frame down proportionally based on the viewport size. 
+        The min function ensures that the phone frame does not exceed its original size, while the calc functions calculate the scaling factor based on the viewport width and height. 
+        This allows the phone frame to adapt to different screen sizes while maintaining its aspect ratio. 
+        A transition is added for a smooth scaling effect when the viewport size changes.
+    */    
+    transform: scale(
+        min(
+            1,
+            calc(100vw / 402),
+            calc(100vh / 874)
+        )
+    );
+    
+    transform-origin: center center;
+    transition: transform 0.2s ease;
+}
+
+
+
+/*
+    The screen inside the phone frame is styled to take up the entire area of the phone frame. 
+    It uses flexbox to center its content both horizontally and vertically. 
+    The background is a combination of a semi-transparent white overlay and a football image, which gives it a sporty theme while ensuring that any content placed on top remains visible.
+*/
+
+.screen {    
+    height: 100%;
+    width: 100%;
+    
+    
+/* ✅ SAFE AREA PADDING */
+    padding-top: calc(16px + env(safe-area-inset-top));
+    padding-right: calc(16px + env(safe-area-inset-right));
+    padding-bottom: calc(16px + env(safe-area-inset-bottom));
+    padding-left: calc(16px + env(safe-area-inset-left));
+
+    display: flex;
+    flex-direction: column;
+    justify-content: stretch;
+    align-items: stretch;
+    
+    background: linear-gradient(
+            #FFEADF,
+            #FF9B63)
+           
+}
+
+/* FONTS */
+
+
+
+.digital {
+    font-family: 'Digital Numbers', monospace;
+    letter-spacing: 0em;
+    
+    
+    }
+
+
+/* Spesifikk styling av "knappene på home siden */
+.home-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+
+    align-items: center;
+}
+
+
+.home .home-actions button {
+    min-width: 200px; /* gives that stable “landing button” feel */
+    text-align: center;
+}
+
+
+
+/*
+    Each button is styled to have a consistent font size and a bright orange background. 
+    They have a solid border and rounded corners for a cohesive look, and padding is added to make them more clickable. 
+    The cursor property is set to pointer to indicate that they are interactive elements.
+*/
+
+
+
+button {
+    -webkit-appearance: none;
+    appearance: none;
+
+    color: #000;
+    text-decoration: none;
+    
+    font-size: 16px;
+    background-color: #F67100;
+    border: 1px solid #000;
+    border-radius: 5px;
+    padding: 10px 20px;
+    cursor: pointer;
+}
+
+
+
+h1  {
+    margin: 0;
+    font-size: 48px;
+    color: #333333;
+}
+
+/* 
+    The nav stack is a container that can be used to hold multiple screens or views within the phone frame. 
+    It is positioned relative to allow for absolute positioning of its child elements if needed, and it takes up the full width and height of its parent container. 
+    Overflow is set to hidden to ensure that any content that exceeds the bounds of the nav stack is not visible, which is important for maintaining a clean and organized layout when navigating between different screens.
+*/
+
+.nav-stack {
+    position: relative;
+    width: 100%;
+    height: 100%;
+
+    overflow: hidden;
+}
+
+/* 
+    The view class is used to represent individual screens or views within the nav stack. 
+    It is positioned absolutely to allow it to be placed on top of other views when navigating between screens. 
+    The initial state of the view is set to be off-screen to the right (translateX(100%)) and fully transparent (opacity: 0), which allows for smooth transitions when the view is activated. 
+    The transition property is used to define the duration and easing of the transform and opacity changes, creating a visually appealing animation effect when navigating between views. 
+    Pointer events are disabled to prevent interaction with the view when it is not active.
+*/
+.view {
+    position: absolute;
+    inset: 0;
+
+    display: flex;
+    flex-direction: column;
+    justify-content: center;  
+    align-items: center;
+
+    background: transparent;
+
+    transform: translateX(100%);
+    opacity: 0;
+
+    transition:
+        transform 0.35s ease,
+        opacity 0.25s ease;
+
+    pointer-events: none;
+}
+
+/* 
+    When a view is active, it is transformed to be in its original position (translateX(0)) and fully opaque (opacity: 1). 
+    Pointer events are enabled to allow interaction with the view when it is active. 
+    This class can be toggled on and off to create smooth transitions between different screens or views within the nav stack.
+*/
+
+.view.active {
+    transform: translateX(0);
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* 
+    The back class is used to define the exit animation for a view when navigating back to a previous screen. 
+    When this class is applied to a view, it is transformed to move off-screen to the left (translateX(-100%)), creating a smooth transition effect as the user navigates back through the app's screens.
+*/
+.view.back {
+    transform: translateX(-100%);
+}
+
+
+#home [data-back] {
+    display: none;
+}
+
+
+#home h1 {
+    margin-top: 24px;
+}
+
+/* home screen layout*/
+.home {
+    justify-content: flex-start;
+}
+
+/* Home screen styling*/
+.view.home {
+    background-image:
+        linear-gradient(
+            rgba(255, 255, 255, 0.25),
+            rgba(255, 255, 255, 0.25)
+        ),
+        url("football.png");
+
+    background-size: cover;
+    background-position: center;
+}
+
+
+/* Meny styling*/
+.view.menu {
+    align-items: stretch;
+    text-align: center;
+    justify-content: flex-start;
+    gap: 16px;
+    
+}
+
+
+
+
+
+.spacer {
+    flex: 1;
+        
+}
+
+
+
+.view.menu button:active {
+    transform: scale(0.98);
+    
+}
+
+
+.view.menu button:first-child {
+    font-weight: 600;
+}
+
+
+.view.menu button .icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 32px;
+    height: 32px;
+    
+}
+
+
+.view.menu button .label {
+    flex: 1;
+    font-size: 18px;
+}
+
+
+/* Knapper med ikoner: egen klasse: ".icon-button ", skiller de fra knapper uten ikoner */
+
+.icon-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+
+    padding: 10px 20px;
+    font-size: 16px;
+
+    background-color: #F67100;
+    border: 1px solid #000;
+    border-radius: 5px;
+
+    cursor: pointer;
+}
+
+.icon-button .label {
+    color: black;
+    
+
+}
+
+.icon {
+    width: 20px;
+    height: 20px;
+
+    /*color: white; */ 
+    stroke: currentColor;
+
+    stroke-width: 2;
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+
+    flex-shrink: 0;
+}
+
+/* Knapper som bare er ikoner */
+
+
+.icon-button.icon-only {
+    background: transparent;
+    border: none;
+
+    /*widht og height her er høyden på den usynlige boksen rundt ikonet" */
+    width: 40px;
+    height: 40px;
+
+    display: grid;
+    place-items: center;
+    
+
+    padding: 0;
+    box-sizing: border-box;
+}
+
+.icon-only .label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+
+}
+
+
+.icon-button.icon-only:hover {
+    background-color: rgba(0, 0, 0, 0.08);
+    border-radius: 50%;
+}
+
+/*It shows a visible focus indicator only when the button is focused via keyboard or assistive technology. */
+.icon-button.icon-only:focus-visible {
+    outline: 2px solid #F67100;
+    outline-offset: 2px;
+}
+
+.back-button{
+    position: absolute;
+    
+    left: calc(16px + env(safe-area-inset-left));
+    bottom: calc(16px + env(safe-area-inset-bottom));  
+    
+    transition: transform 0.12s ease;
+    transform-origin: center;
+    
+}
+
+.back-button:active {
+    transform: scale(0.98);    
+}
+
+
+
+
+/* Så kommer spesifikk layout for .Card klassen, som benyttes som en ramme/container rundt "formen"  */
+.card {
+    width: 100%;
+    max-width: 380px;
+
+    background-color: transparent;
+    border: solid 0,5px black;
+    border-radius: 12px;
+    padding: 30px;
+    
+    /*border: solid 1px black; 
+    
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);*/
+}
+
+
+
+/* Kampdag skjema for å fylle inn data */
+
+.form {
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+    gap: 16px; /*avstand mellom kanppene*/
+        
+}
+
+/* Each label + input pair should feel like one logical unit. */
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    
+}
+
+.field label {
+    font-size: 16px;
+    font-weight: 600;
+    color: #333;
+}
+
+
+.field input {
+    padding: 12px 14px;
+    font-size: 16px;
+
+    border-radius: 8px;
+    border: 1px solid #ccc;
+
+    background-color: #fff;
+}
+
+
+.field input:focus {
+    outline: none;
+    border-color: #F67100;
+    box-shadow: 0 0 0 2px rgba(246, 113, 0, 0.2);
+}
+
+
+.field input::placeholder {
+    color: #999;
+}
+
+
+
+/* Her kommer layouten for alle "leaf" views */
+
+.view.leaf {
+    align-items: stretch;
+    text-align: center;
+    justify-content: flex-start;
+    gap: 16px;
+    padding: 14px;
+    
+}
+
+/*ramma rundt alle knapper - Alle standard knapper får denne "clasen" i en div rundt knappene*/
+.menu-panel {
+    padding: 15px 30px;  
+    border-radius: 6px;
+    /*border: 1px solid black; */
+
+    }
+
+
+.button-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+
+    width: 100%;
+    max-width: 380px;
+    margin: 0 auto;
+
+    /*border: solid 1px black; */
+}
+
+/* Dette styrer selve utseende på knappene, sammen med den globale "button" som ligger øverst i CSS-en*/
+.button-group > button {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+
+    width: 100%;
+    text-align: left;
+}
+
+
+.button-group > button .icon {
+    display: block;         /* prevents SVG baseline drift */
+    flex-shrink: 0;
+}
+
+
+.button-group > button .label {
+    line-height: 1;         /* removes extra vertical slack */
+}
+
+
+/* !!!!!!! HER KOMMER CSS-EN FOR LIVE KAMP VISNINGEN !!!!!!! */
+
+
+#region-start-kamp,
+#start-kamp {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/*Hver region har sin egen "ramme" .region */
+.region {
+    width: 100%;
+    max-width: 380px;
+    margin: 0 auto;
+    /* border: solid 1px black; */
+}
+
+/* Scoreboard */
+.scoreboard {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    text-align: center;
+    font-size: 28px;
+    
+}
+
+.scoreboard .score {
+    font-size: 2.2rem;
+    font-weight: 400;   /* don't bold digital fonts */
+}
+
+.scoreboard .team {
+font-size: 1.3rem;
+
+}
+
+.score {
+    white-space: nowrap;
+    word-spacing: -0.50em;
+}
+
+
+/*Gamehalf*/
+.gamehalf {
+ text-align: center;
+ font-size: 12px;
+ color: #888787;
+}
+
+
+/* Clock */
+.clock {
+    text-align: center;
+    font-size: 32px;
+    
+}
+
+/* Controls */
+.controls {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.control-row {
+    display: grid;
+    grid-template-columns: auto auto 1fr auto auto;
+    align-items: center;
+    gap: 16px;
+}
+
+/* gjør at knappen krymper litt når man klikker på den. føles som om man trykker */
+.control-row button {
+    height: 38px;
+    width: 38px;
+    border-radius: 50%;
+    
+    
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    
+    
+    
+    transition: transform 0.08s ease, 
+    background-color 0.08s ease;
+}
+
+.control-row button:active {
+    transform: scale(0.92);
+    background-color: rgba(0, 0, 0, 0.1);
+}
+
+
+.control-row button[data-action="inc"] {
+    background-color: #82BE83
+}
+
+.control-row button[data-action="dec"] {
+    background-color: #FC5858
+}
+
+
+/* Diabled + og . knapper */
+.controls.disabled {
+    opacity: 0.5;
+}
+
+.controls.disabled button {
+    pointer-events: none;
+   
+}
+
+
+/* Mål animasjon */
+
+
+@keyframes goalFlash {
+    0% {
+        transform: scale(1);
+        background-color: rgba(255, 215, 0, 0.7);
+    }
+    50% {
+        transform: scale(1.2);
+        background-color: rgba(255, 165, 0, 0.9);
+    }
+    100% {
+        transform: scale(1);
+        background-color: transparent;
+    }
+}
+
+
+.score {
+    display: inline-block;
+    padding: 4px 2px;
+}
+
+.flash-goal {
+    animation: goalFlash 0.6s ease;
+    border-radius: 8px;
+}
+
+
+/* Gjør at statistikken man endrer "flasher" litt når man klikker" */
+@keyframes statFlash {
+    0%   { background-color: rgba(255, 180, 0, 0.4); }
+    100% { background-color: transparent; }
+}
+
+.stat-flash {
+    animation: statFlash 0.5s ease;
+    border-radius: 4px;
+}
+
+
+/* Summary - oppsummering av tallene/statistikken */
+.summary {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    color: #333;
+}
+
+.summary-row {
+    display: grid;
+    grid-template-columns: minmax(2.5em, 1fr) auto minmax(2.5em, 1fr);
+    align-items: center;
+    column-gap: 12px;
+}
+
+.summary-row .label {
+    text-align: center;
+    white-space: nowrap;
+}
+
+.region.summary [data-summary] {
+    display: inline-block;
+    min-width: 1.5em;
+    padding: 2px 6px;
+}
+
+.region.summary [data-summary^="home-"] {
+    text-align: left ;
+}
+
+.region.summary [data-summary^="away-"] {
+    text-align: right;
+}
+
+
+
+/* Match controls */
+.match-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    flex-wrap: nowrap;       
+    width: 100%;
+}
+
+
+
+.match-controls button {
+    padding: 10px 16px;
+    font-size: 1rem;
+    font-weight: 600;
+    border-radius: 8px;
+    /*border: none;*/
+    cursor: pointer;
+    transition:
+        background-color 0.15s ease,
+        transform 0.08s ease,
+        opacity 0.15s ease;
+}
+
+
+.match-controls button:active {
+    transform: scale(0.96);
+}
+
+
+    
+
+.match-controls button {
+    flex-shrink: 0;           /* ✅ icon buttons never shrink */
+}
+
+
+.match-controls .primary {
+    flex: 1 1 auto;           /* ✅ grows to fill remaining space */
+    min-width: 0;             /* ✅ allows shrinking */
+    background-color: #82BE83; /* green */
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    
+}
+
+
+.match-controls .primary.running {
+    background-color: #c62828; /* red */
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+
+.match-controls .icon-only {
+    padding: 0;
+    width: 44px;
+    height: 44px;
+    background-color: #F67100;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* default = stopped */
+.icon-stop {
+    display: none;
+}
+
+/* when match is running */
+.primary.running .icon-start {
+    display: none;
+}
+
+.primary.running .icon-stop {
+    display: inline-block;
+}
+
+
+
+
+
+  /* mobile overrides go here */
+
+@media (max-width: 430px) {
+  .scoreboard {
+    margin-bottom: 4px;
+  }
+
+  .scoreboard .score {
+    font-size: 2rem; /* from 2.2rem */
+  }
+
+  .scoreboard .team {
+    font-size: 1.1rem; /* from 1.3rem */
+  }
+
+  .clock {
+    font-size: 2.1rem; /* slightly smaller */
+    margin-bottom: 6px;
+  }
+
+  .gamehalf {
+    font-size: 0.75rem;
+    margin-bottom: 6px;
+  }
+}
+
+
+@media (max-width: 430px) {
+  .controls {
+    gap: 6px; /* from ~10px */
+  }
+}
+
+
+@media (max-width: 430px) {
+  .control-row button {
+    width: 36px;
+    height: 36px;
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 430px) {
+  .control-row .label {
+    font-size: 0.95rem;
+    line-height: 1.1;
+  }
+}
+
+@media (max-width: 430px) {
+  .summary {
+    gap: 3px;
+    font-size: 0.9rem;
+  }
+
+  .summary-row {
+    column-gap: 8px;
+  }
+}
+
+@media (max-width: 430px) {
+  .match-controls {
+    gap: 6px;
+    margin-top: 6px;
+  }
+
+  .match-controls .primary {
+    min-height: 44px;
+    font-size: 1.05rem;
+  }
+
+  .match-controls .icon-only {
+    width: 40px;
+    height: 40px;
+  }
+}
+
+
+@media (max-width: 430px) {
+  .screen {
+    overflow: hidden;
+  }
+}
