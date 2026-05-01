@@ -38,12 +38,8 @@ const historyStack = [];
     next.classList.remove('back');
     next.classList.add('active');
 
-    // ✅ notify app
-    window.dispatchEvent(
-        new CustomEvent("view-activated", {
-            detail: { id }
-        })
-    );
+    activateView(id);
+    
 }
 
     export function goBack() {
@@ -57,7 +53,7 @@ const historyStack = [];
         current.classList.add('back');
         previous.classList.add('active');
 
-        
+        activateView(previousId);
     }
 
 
@@ -68,6 +64,19 @@ import { initStartKamp } from "./start-kamp.js";
 
 
 function activateView(viewId) {
+    const screenBg = document.querySelector(".screen-bg");
+
+    // Reset all background states
+    screenBg.classList.remove("bg-home", "bg-app");
+
+    // Apply correct background
+    if (viewId === "home") {
+        screenBg.classList.add("bg-home");
+    } else {
+        screenBg.classList.add("bg-app");
+    }
+
+    // Existing view init logic
     if (viewId === "kampdag") {
         initKampdag();
     }
@@ -78,16 +87,10 @@ function activateView(viewId) {
 }
 
 
-window.addEventListener("view-activated", (event) => {
-    const { id } = event.detail;
 
-    if (id === "kampdag") {
-        initKampdag();
-    }
-
-    if (id === "start-kamp") {
-        initStartKamp();
-    }
+document.addEventListener("DOMContentLoaded", () => {
+    const screenBg = document.querySelector(".screen-bg");
+    screenBg.classList.add("bg-home");
 });
 
 

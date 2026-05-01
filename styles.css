@@ -57,12 +57,13 @@ body {
     border: 1px solid #000;
     border-radius: 8px;
 
-    background-color: #e0e0e0;
+    position: relative;
+    background-color: transparent;
     overflow: hidden; /* CRITICAL */
 
     box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
     
-    position: relative;
+    
 
    /*   The transform property is used to scale the phone frame down proportionally based on the viewport size. 
         The min function ensures that the phone frame does not exceed its original size, while the calc functions calculate the scaling factor based on the viewport width and height. 
@@ -83,13 +84,62 @@ body {
 
 
 
+/*.screen-bg {
+    position: absolute;
+    inset: 0;
+
+    background-image:
+        linear-gradient(
+            rgba(255,255,255,0.25),
+            rgba(255,255,255,0.25)
+        ),
+        url("./Football.png");
+
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+} */
+
+
+.screen-bg {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    background: none;
+}
+
+
+.screen-bg.bg-home {
+    background-image:
+        linear-gradient(
+            rgba(255,255,255,0.25),
+            rgba(255,255,255,0.25)
+        ),
+        url("./Football.png");
+
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+
+
+.screen-bg.bg-app {
+    background: linear-gradient(
+        #FFEADF,
+        #FF9B63)
+}
+
+
 /*
     The screen inside the phone frame is styled to take up the entire area of the phone frame. 
     It uses flexbox to center its content both horizontally and vertically. 
     The background is a combination of a semi-transparent white overlay and a football image, which gives it a sporty theme while ensuring that any content placed on top remains visible.
 */
 
-.screen {    
+.screen {   
+    position: relative; 
+    z-index: 1;
     height: 100%;
     width: 100%;
     
@@ -105,9 +155,11 @@ body {
     justify-content: stretch;
     align-items: stretch;
     
-    background: linear-gradient(
+    background: transparent;
+
+   /* background: linear-gradient(
             #FFEADF,
-            #FF9B63)
+            #FF9B63) */
            
 }
 
@@ -257,13 +309,7 @@ h1  {
 
 /* Home screen styling*/
 .view.home {
-    background-image:
-        linear-gradient(
-            rgba(255, 255, 255, 0.25),
-            rgba(255, 255, 255, 0.25)
-        ),
-        url("Football.png");
-
+    
     background-size: cover;
     background-position: center;
 }
@@ -277,8 +323,6 @@ h1  {
     gap: 16px;
     
 }
-
-
 
 
 
