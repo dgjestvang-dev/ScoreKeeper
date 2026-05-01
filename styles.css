@@ -100,7 +100,14 @@ body {
     background-repeat: no-repeat;
 } */
 
-
+/* The background layer (.screen-bg) 
+- Exists once
+- Covers the entire phone screen
+- Has no padding
+- Never moves
+- Never changes size
+- Only changes classes
+*/
 .screen-bg {
     position: absolute;
     inset: 0;
@@ -131,10 +138,11 @@ body {
 }
 
 
-/*
-    The screen inside the phone frame is styled to take up the entire area of the phone frame. 
-    It uses flexbox to center its content both horizontally and vertically. 
-    The background is a combination of a semi-transparent white overlay and a football image, which gives it a sporty theme while ensuring that any content placed on top remains visible.
+/* The content layer (.screen)
+- Sits above the background
+- Handles padding and safe‑areas
+- Contains all views
+- Never knows what background is behind it
 */
 
 .screen {   
@@ -244,13 +252,13 @@ h1  {
     overflow: hidden;
 }
 
-/* 
-    The view class is used to represent individual screens or views within the nav stack. 
-    It is positioned absolutely to allow it to be placed on top of other views when navigating between screens. 
-    The initial state of the view is set to be off-screen to the right (translateX(100%)) and fully transparent (opacity: 0), which allows for smooth transitions when the view is activated. 
-    The transition property is used to define the duration and easing of the transform and opacity changes, creating a visually appealing animation effect when navigating between views. 
-    Pointer events are disabled to prevent interaction with the view when it is not active.
+/* The view class is used to represent individual screens or views within the nav stack. 
+- Represent states of the app: home, menu, match, etc.
+- Are shown/hidden by adding/removing .active
+- Should never decide global background
+- Only describe content and intent
 */
+
 .view {
     position: absolute;
     inset: 0;

@@ -69,12 +69,20 @@ function activateView(viewId) {
     // Reset all background states
     screenBg.classList.remove("bg-home", "bg-app");
 
+    
+    // Views that share the home-style background
+    const homeLikeViews = ["home", "main_menu"];
+
+
+
     // Apply correct background
-    if (viewId === "home") {
+    
+    if (homeLikeViews.includes(viewId)) {
         screenBg.classList.add("bg-home");
     } else {
         screenBg.classList.add("bg-app");
     }
+
 
     // Existing view init logic
     if (viewId === "kampdag") {
