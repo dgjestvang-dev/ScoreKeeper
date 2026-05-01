@@ -164,6 +164,13 @@ button {
 }
 
 
+button,
+.control-row,
+.match-controls {
+  touch-action: manipulation;
+}
+
+
 
 h1  {
     margin: 0;

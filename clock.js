@@ -1,72 +1,83 @@
-/**
- * Passive game clock
- * ------------------
- * - Counts down
- * - Two halves
- * - No timers, no DOM, no side effects
- * - State changes only via explicit method calls
- */
-
 export function createClock(halfDurationSeconds) {
-    // --- Private state ---
+    let halfDuration = halfDurationSeconds;
+
     let currentHalf = 1;
-    let remainingSeconds = halfDurationSeconds;
-    let isRunning = false;
+    let running = false;
 
-    // --- Public API ---
-    return {
-        // --- Read-only accessors ---
-        getCurrentHalf() {
-            return currentHalf;
-        },
+    let halfStartTimestamp = null; // ms since epoch
+    let pausedRemaining = halfDuration; // seconds
 
-        getRemainingSeconds() {
-            return remainingSeconds;
-        },
+    function start() {
+        if (running) return;
 
-        isRunning() {
-            return isRunning;
-        },
+        running = true;
 
-        isExpired() {
-            return remainingSeconds === 0;
-        },
+        // Resume from pause OR start new half
+        halfStartTimestamp = Date.now() - (halfDuration - pausedRemaining) * 1000;
+    }
 
-        // --- Commands ---
-        start() {
-            if (remainingSeconds > 0) {
-                isRunning = true;
-            }
-        },
+    function pause() {
+        if (!running) return;
 
-        pause() {
-            isRunning = false;
-        },
+        pausedRemaining = getRemainingSeconds();
+        running = false;
+        halfStartTimestamp = null;
+    }
 
-        tick() {
-            if (!isRunning || remainingSeconds === 0) {
-                return;
-            }
+    function resetForNextHalf() {
+        currentHalf += 1;
+        running = false;
+        halfStartTimestamp = null;
+        pausedRemaining = halfDuration;
+    }
 
-            remainingSeconds -= 1;
+    function resetGame() {
+        currentHalf = 1;
+        running = false;
+        halfStartTimestamp = null;
+        pausedRemaining = halfDuration;
+    }
 
-            if (remainingSeconds === 0) {
-                isRunning = false;
-            }
-        },
-
-        resetForNextHalf() {
-            if (currentHalf === 1 && remainingSeconds === 0) {
-                currentHalf = 2;
-                remainingSeconds = halfDurationSeconds;
-                isRunning = false;
-            }
-        },
-
-        resetGame() {
-            currentHalf = 1;
-            remainingSeconds = halfDurationSeconds;
-            isRunning = false;
+    function getRemainingSeconds() {
+        if (!running) {
+            return pausedRemaining;
         }
+
+        const elapsed = Math.floor(
+            (Date.now() - halfStartTimestamp) / 1000
+        );
+
+        const remaining = halfDuration - elapsed;
+        return Math.max(0, remaining);
+    }
+
+    function tick() {
+        // No-op: time is derived from Date.now()
+        // This function exists to preserve your existing API
+    }
+
+    function isExpired() {
+        return getRemainingSeconds() <= 0;
+    }
+
+    function isRunning() {
+        return running;
+    }
+
+    function getCurrentHalf() {
+        return currentHalf;
+    }
+
+    return {
+        start,
+        pause,
+        tick,
+        resetForNextHalf,
+        resetGame,
+        getRemainingSeconds,
+        getCurrentHalf,
+        isRunning,
+        isExpired
     };
 }
+``

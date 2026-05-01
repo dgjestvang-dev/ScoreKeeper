@@ -148,6 +148,16 @@ function renderClock() {
     timeEl.textContent = formatTime(clock.getRemainingSeconds());
 }
 
+
+
+document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) {
+        renderClock();
+    }
+});
+
+
+
 function renderTeams() {
     if (!homeTeamEl) return;
     homeTeamEl.textContent = matchConfig.homeTeamName;
@@ -223,27 +233,42 @@ function onStatButtonClick(event) {
     const action = btn.dataset.action;   // "inc" | "dec"
 
     if (action === "inc") {
-    matchStats.increment(team, stat);
+        matchStats.increment(team, stat);
 
-    // ✅ Domain rule: shot on target is also a total shot
-    if (stat === "shots_target") {
-        matchStats.increment(team, "shots_total");
+        // ✅ Goal is also a shot on target (and a total shot)
+        if (stat === "goals") {
+            matchStats.increment(team, "shots_target");
+            matchStats.increment(team, "shots_total");
+        }
+
+        // ✅ Shot on target is also a total shot
+        if (stat === "shots_target") {
+            matchStats.increment(team, "shots_total");
+        }
+
+    } else if (action === "dec") {
+        matchStats.decrement(team, stat);
+
+        // ✅ Undo goal effects
+        if (stat === "goals") {
+            matchStats.decrement(team, "shots_target");
+            matchStats.decrement(team, "shots_total");
+        }
+
+        // ✅ Undo shot-on-target effect
+        if (stat === "shots_target") {
+            matchStats.decrement(team, "shots_total");
+        }
     }
-
-} else if (action === "dec") {
-    matchStats.decrement(team, stat);
-
-    // ✅ Keep totals consistent when decrementing
-    if (stat === "shots_target") {
-        matchStats.decrement(team, "shots_total");
-    }
-}
 
 
     // Dersom det er mål har det sin egen logikk --> renderScore
     if (stat === "goals") {
         renderScore();
-        flashGoalScore();
+        flashGoalScore();   
+        renderStat("shots_target");
+        renderStat("shots_total");
+
     } else {
 
     // oppdater statistikk + flash
@@ -391,11 +416,11 @@ function buildMatchSummary() {
     return `
 ${home} - ${away}: ${homeGoals} – ${awayGoals} 
 
-
 STATISTIKK
 Avslutninger: ${matchStats.get("home", "shots_total")} – ${matchStats.get("away", "shots_total")}
 Skudd på mål: ${matchStats.get("home", "shots_target")} – ${matchStats.get("away", "shots_target")}
 Corner: ${matchStats.get("home", "corners")} – ${matchStats.get("away", "corners")}
+Offside: ${matchStats.get("home", "offside")} – ${matchStats.get("away", "offside")}
 Gult kort: ${matchStats.get("home", "yellow_card")} – ${matchStats.get("away", "yellow_card")}
 Rødt kort: ${matchStats.get("home", "red_card")} – ${matchStats.get("away", "red_card")}
 `.trim();
