@@ -1,59 +1,108 @@
+// ─────────────────────────────────────────────
+// Imports
+// ─────────────────────────────────────────────
 
 import { createClock } from "./clock.js";
 import { matchConfig } from "./match-config.js";
-import { createMatchStats } from "./match-stats.js";
 import { goBack } from "./navigation.js";
+import { generateId } from "./utils.js";
+
+import { loadFromStorage, saveToStorage } from "./storage.js";
+import { getTeams, getPlayersForTeam } from "./teams.js";
+import { openPlayerAssign } from "./player-assign-ui.js";
 
 
+
+
+// ─────────────────────────────────────────────
+// Match‑scoped state & DOM references
+// ─────────────────────────────────────────────
 
 let clock;
+let tickIntervalId = null;
+
 let timeEl;
 let startStopBtn;
-let tickIntervalId = null;
 let nextHalfBtn;
-let homeTeamEl;
-let awayTeamEl;
-let halfValueEl;
-let matchStats;
 let resetMatchBtn;
 let saveMatchBtn;
 
+let homeTeamEl;
+let awayTeamEl;
+let halfValueEl;
+
 let hasStarted = false;
 
+// Event‑sourced match data (single source of truth)
+let matchEvents = [];
+
+
+// ─────────────────────────────────────────────
+// TEMP players and TEAMS for Phase 2b Will be replaced by real team data later.
+// ─────────────────────────────────────────────
+
+
+// TEMP: team IDs for the current match
+let homeTeamId = null;
+let awayTeamId = null;
+
+
+// ─────────────────────────────────────────────
+// CREATE LOCAL STORAGE
+// ─────────────────────────────────────────────
+
+const STORAGE_KEYS = {
+    CURRENT_MATCH_EVENTS: "sk_current_match_events",
+    CURRENT_MATCH_META: "sk_current_match_meta"
+};
+
+// ─────────────────────────────────────────────
+// Initialization / view entry point
+// ─────────────────────────────────────────────
 
 export function initStartKamp() {
-    
-     // ❗ Safety: clean up if re-entering the view
+
+        
+    homeTeamId = matchConfig.homeTeamId;
+    awayTeamId = matchConfig.awayTeamId;
+
+    if (!homeTeamId || !awayTeamId) {
+        console.error("Team IDs missing for match");
+        return;
+    }
+
+
+    // Safety: clean up if re‑entering the view
     stopTicking();
     tickIntervalId = null;
 
-    if (!matchConfig.gametimeMinutes || !matchConfig.homeTeamName || !matchConfig.awayTeamName) {
+    if (
+        !matchConfig.gametimeMinutes ||
+        !matchConfig.homeTeamName ||
+        !matchConfig.awayTeamName
+    ) {
         console.error("Gametime and teamnames not set");
         return;
     }
 
     const HALF_DURATION_SECONDS = matchConfig.gametimeMinutes * 60;
-
     clock = createClock(HALF_DURATION_SECONDS);
 
-    
+    // Attach delegated stat handler
     const controlsEl = document.querySelector("#start-kamp .controls");
-
     if (!controlsEl) {
         console.error("Controls container not found");
         return;
     }
-
     controlsEl.addEventListener("click", onStatButtonClick);
 
-
-    // --- Query DOM elements (view is now active) ---
+    // Query DOM (view is now active)
     timeEl = document.querySelector("#start-kamp .clock .time");
     homeTeamEl = document.querySelector("#start-kamp .team.home");
     awayTeamEl = document.querySelector("#start-kamp .team.away");
     halfValueEl = document.querySelector("#start-kamp .gamehalf-value");
 
-    // --- Prevent duplicate listeners by replacing buttons ---
+    // Replace buttons to prevent duplicate listeners
     startStopBtn = document.getElementById("start-stop-btn");
     startStopBtn.replaceWith(startStopBtn.cloneNode(true));
     startStopBtn = document.getElementById("start-stop-btn");
@@ -61,8 +110,8 @@ export function initStartKamp() {
     nextHalfBtn = document.getElementById("next-half-btn");
     nextHalfBtn.replaceWith(nextHalfBtn.cloneNode(true));
     nextHalfBtn = document.getElementById("next-half-btn");
-    
-    resetMatchBtn = document.getElementById("reset-match-btn");    
+
+    resetMatchBtn = document.getElementById("reset-match-btn");
     resetMatchBtn.replaceWith(resetMatchBtn.cloneNode(true));
     resetMatchBtn = document.getElementById("reset-match-btn");
 
@@ -70,33 +119,48 @@ export function initStartKamp() {
     saveMatchBtn.replaceWith(saveMatchBtn.cloneNode(true));
     saveMatchBtn = document.getElementById("save-match-btn");
 
+    
+    // Restore persisted match state (if any)
+    matchEvents = loadFromStorage(
+        STORAGE_KEYS.CURRENT_MATCH_EVENTS,
+        []
+    );
 
-    console.log("Reset button:", resetMatchBtn);
-    //kamp stats:
-    matchStats = createMatchStats();
-    
-    
+    hasStarted = loadFromStorage(
+        STORAGE_KEYS.CURRENT_MATCH_META,
+        { hasStarted: false }
+    ).hasStarted;
+
+
+    // Initial render
     renderClock();
     renderHalf();
-    renderTeams(); 
+    renderTeams();
     renderScore();
     renderStatsSummary();
 
+    // Wire controls
     startStopBtn.addEventListener("click", onStartStopClick);
     nextHalfBtn.addEventListener("click", onNextHalfClick);
     resetMatchBtn.addEventListener("click", onResetMatchClick);
     saveMatchBtn.addEventListener("click", onSaveMatchClick);
 
-    // ✅ Force final button state after DOM settles
+    // Ensure final button state after DOM settles
     requestAnimationFrame(() => {
-    updateMatchControls();
-});
+        updateMatchControls();
+    });
 }
 
 
 
 
+// ─────────────────────────────────────────────
+// Clock reconciliation & match control logic
+// ─────────────────────────────────────────────
+
 function reconcileClockState() {
+    if (!clock) return;
+
     if (clock.isExpired() && clock.isRunning()) {
         clock.pause();
         stopTicking();
@@ -114,22 +178,21 @@ function onStartStopClick() {
         hasStarted = true;
         startTicking();
     }
+    
+    saveToStorage(STORAGE_KEYS.CURRENT_MATCH_META, { hasStarted });
 
     updateMatchControls();
 }
 
-
-
-   function updateMatchControls() {
-    // ✅ ALWAYS reconcile state first
+function updateMatchControls() {
+    if (!clock) return;   
     reconcileClockState();
 
     const running = clock.isRunning();
     const expired = clock.isExpired();
     const half = clock.getCurrentHalf();
 
-    /* ───────── Start / Stop ───────── */
-
+    // Start / Stop button
     if (expired && half === 2) {
         startStopBtn.disabled = true;
         startStopBtn.querySelector(".label").textContent = "Slutt";
@@ -144,29 +207,28 @@ function onStartStopClick() {
 
     startStopBtn.classList.toggle("running", running);
 
-    /* ───────── Next half ───────── */
-
-    nextHalfBtn.disabled = !(hasStarted && expired && !running && half === 1);
-
-
-    /* ───────── Stats ───────── */
+    // Advance to next half
+    nextHalfBtn.disabled = !(
+        hasStarted &&
+        expired &&
+        !running &&
+        half === 1
+    );
 
     updateStatControls();
 
-    
-
     console.log("Match control state", {
-    expired,
-    running,
-    half,
-    resetHalfDisabled: nextHalfBtn.disabled
-    
-});
+        expired,
+        running,
+        half,
+        resetHalfDisabled: nextHalfBtn.disabled
+    });
 }
 
 
-
-
+// ─────────────────────────────────────────────
+// Time / ticking
+// ─────────────────────────────────────────────
 
 function formatTime(seconds) {
     const minutes = Math.floor(seconds / 60);
@@ -178,36 +240,6 @@ function renderClock() {
     if (!timeEl) return;
     timeEl.textContent = formatTime(clock.getRemainingSeconds());
 }
-
-
-
-
-document.addEventListener("visibilitychange", () => {
-    if (!document.hidden) {
-        reconcileClockState();
-        renderClock();
-        updateMatchControls();
-    }
-})
-
-
-
-
-function renderTeams() {
-    if (!homeTeamEl) return;
-    homeTeamEl.textContent = matchConfig.homeTeamName;
-    awayTeamEl.textContent = matchConfig.awayTeamName;
-}
-
-
-function renderHalf() {
-    if (!halfValueEl) return;
-    halfValueEl.textContent = clock.getCurrentHalf();
-}
-
-
-
-
 
 function startTicking() {
     if (tickIntervalId !== null) return;
@@ -221,16 +253,36 @@ function startTicking() {
 
 function stopTicking() {
     if (tickIntervalId === null) return;
-
     clearInterval(tickIntervalId);
     tickIntervalId = null;
 }
 
+// Recover cleanly when tab regains focus
+document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) {
+        reconcileClockState();
+        renderClock();
+        updateMatchControls();
+    }
+});
 
 
-//Neste omgang knappen
+// ─────────────────────────────────────────────
+// Half / team rendering
+// ─────────────────────────────────────────────
+
+function renderTeams() {
+    if (!homeTeamEl) return;
+    homeTeamEl.textContent = matchConfig.homeTeamName;
+    awayTeamEl.textContent = matchConfig.awayTeamName;
+}
+
+function renderHalf() {
+    if (!halfValueEl) return;
+    halfValueEl.textContent = clock.getCurrentHalf();
+}
+
 function onNextHalfClick() {
-    // Defensive guard
     if (
         clock.getCurrentHalf() !== 1 ||
         !clock.isExpired() ||
@@ -240,89 +292,169 @@ function onNextHalfClick() {
     }
 
     clock.resetForNextHalf();
-
     renderClock();
     renderHalf();
-
     updateMatchControls();
 }
 
 
+// ─────────────────────────────────────────────
+// Event‑sourced statistics (core logic)
+// ─────────────────────────────────────────────
 
+function deriveStats(events) {
+    const stats = { home: {}, away: {} };
 
-// ONE click handler for all stat buttons
-function onStatButtonClick(event) {
-    
-     // ⛔ Block stat changes when clock is not running
-    if (!clock.isRunning()) {
-        return;
+    for (const event of events) {
+        if (!event.team) continue;
+
+        const bucket = stats[event.team];
+        bucket[event.type] = (bucket[event.type] || 0) + 1;
     }
+
+    return stats;
+}
+
+function onStatButtonClick(event) {
+    // ⛔ Ingen stats hvis kampen ikke går
+    if (!clock.isRunning()) return;
 
     const btn = event.target.closest("button[data-stat]");
     if (!btn) return;
 
     const team = btn.dataset.team;       // "home" | "away"
-    const stat = btn.dataset.stat;       // "goals", "corners", ...
+    const stat = btn.dataset.stat;       // "goals", "shots_target", ...
     const action = btn.dataset.action;   // "inc" | "dec"
 
-    if (action === "inc") {
-        matchStats.increment(team, stat);
+    const half = clock.getCurrentHalf();
+    const time = clock.getElapsedSeconds();
+    const timestamp = Date.now();
 
-        // ✅ Goal is also a shot on target (and a total shot)
+    let baseEvent = null; // ← brukes for goals
+
+    if (action === "inc") {
+
+        // ✅ Hoved-event (ALLTID denne som er "brukerhandlingen")
+        baseEvent = {
+            id: generateId(),
+            type: stat,
+            team,
+            teamId: team === "home" ? homeTeamId : awayTeamId,
+            playerId: null,
+            half,
+            time,
+            timestamp
+        };
+
+        matchEvents.push(baseEvent);
+
+        // ✅ Domene-relasjoner
         if (stat === "goals") {
-            matchStats.increment(team, "shots_target");
-            matchStats.increment(team, "shots_total");
+            matchEvents.push({
+                id: generateId(),
+                type: "shots_target",
+                team,
+                teamId: baseEvent.teamId,
+                playerId: null,
+                half,
+                time,
+                timestamp
+            });
+
+            matchEvents.push({
+                id: generateId(),
+                type: "shots_total",
+                team,
+                teamId: baseEvent.teamId,
+                playerId: null,
+                half,
+                time,
+                timestamp
+            });
         }
 
-        // ✅ Shot on target is also a total shot
         if (stat === "shots_target") {
-            matchStats.increment(team, "shots_total");
+            matchEvents.push({
+                id: generateId(),
+                type: "shots_total",
+                team,
+                teamId: baseEvent.teamId,
+                playerId: null,
+                half,
+                time,
+                timestamp
+            });
         }
 
     } else if (action === "dec") {
-        matchStats.decrement(team, stat);
 
-        // ✅ Undo goal effects
-        if (stat === "goals") {
-            matchStats.decrement(team, "shots_target");
-            matchStats.decrement(team, "shots_total");
+        // ❌ Fjerne siste relevante event for dette laget
+        function removeLastEvent(type) {
+            for (let i = matchEvents.length - 1; i >= 0; i--) {
+                const e = matchEvents[i];
+                if (e.type === type && e.team === team) {
+                    matchEvents.splice(i, 1);
+                    return;
+                }
+            }
         }
 
-        // ✅ Undo shot-on-target effect
+        removeLastEvent(stat);
+
+        if (stat === "goals") {
+            removeLastEvent("shots_target");
+            removeLastEvent("shots_total");
+        }
+
         if (stat === "shots_target") {
-            matchStats.decrement(team, "shots_total");
+            removeLastEvent("shots_total");
         }
     }
 
+    // 🔄 UI-oppdatering
+    renderScore();
+    renderStatsSummary();
 
-    // Dersom det er mål har det sin egen logikk --> renderScore
-    if (stat === "goals") {
-        renderScore();
-        flashGoalScore();   
-        renderStat("shots_target");
-        renderStat("shots_total");
+    // ✅ Spillervalgs-popup KUN for goals
+    if (stat === "goals" && action === "inc" && baseEvent) {
+        flashGoalScore();
 
-    } else {
+        const teamPlayers =
+            team === "home"
+                ? getPlayersForTeam(homeTeamId)
+                : getPlayersForTeam(awayTeamId);
 
-    // oppdater statistikk + flash
-    renderStat(stat);
+        openPlayerAssign(teamPlayers, (playerId) => {
+            if (playerId) {
+                baseEvent.playerId = playerId;
+
+                // ✅ VIKTIG: lagre etter at spilleren er valgt
+                saveToStorage(
+                    STORAGE_KEYS.CURRENT_MATCH_EVENTS,
+                    matchEvents
+                );
+            }
+        });
+    }
+
     flashStat(stat, team);
 
-    
-    // ✅ Shots on target also affect total shots – update UI
-    if (stat === "shots_target") {
-        renderStat("shots_total");
-    }
-
-
-    }
+    // ✅ Lagre alltid etter synkrone endringer
+    saveToStorage(
+        STORAGE_KEYS.CURRENT_MATCH_EVENTS,
+        matchEvents
+    );
 }
 
 
+// ─────────────────────────────────────────────
+// UI rendering from derived stats
+// ─────────────────────────────────────────────
 
 function renderScore() {
-    const homeGoals = matchStats.get("home", "goals");
-    const awayGoals = matchStats.get("away", "goals");
+    const stats = deriveStats(matchEvents);
+    const homeGoals = stats.home.goals || 0;
+    const awayGoals = stats.away.goals || 0;
 
     const scoreEl = document.querySelector("#start-kamp .score");
     scoreEl.textContent = `${homeGoals} – ${awayGoals}`;
@@ -337,87 +469,75 @@ function renderStatsSummary() {
     renderStat("red_card");
 }
 
-//Jeg tror dette statistikkdelen. home- og away- er prefix
-
 function renderStat(stat) {
-    const homeEl = document.querySelector(
-        `#start-kamp [data-summary="home-${stat}"]`
-    );
-    const awayEl = document.querySelector(
-        `#start-kamp [data-summary="away-${stat}"]`
-    );
+    const stats = deriveStats(matchEvents);
 
-    if (!homeEl || !awayEl) {
-        console.warn(`Summary elements missing for stat: ${stat}`);
-        return;
-    }
+    const homeValue = stats.home[stat] || 0;
+    const awayValue = stats.away[stat] || 0;
 
-    homeEl.textContent = matchStats.get("home", stat);
-    awayEl.textContent = matchStats.get("away", stat);
+    const homeEl = document.querySelector(`#start-kamp [data-summary="home-${stat}"]`);
+    const awayEl = document.querySelector(`#start-kamp [data-summary="away-${stat}"]`);
 
-    
+    if (!homeEl || !awayEl) return;
+
+    homeEl.textContent = homeValue;
+    awayEl.textContent = awayValue;
 }
 
+
+// ─────────────────────────────────────────────
+// Visual feedback (animations)
+// ─────────────────────────────────────────────
+
 function flash(el) {
-    el.classList.remove("stat-flash"); // restart animation
-    void el.offsetWidth;               // reflow trick
+    el.classList.remove("stat-flash");
+    void el.offsetWidth;
     el.classList.add("stat-flash");
 }
 
-
 function flashStat(stat, team) {
-    const el = document.querySelector(
-        `#start-kamp [data-summary="${team}-${stat}"]`
-    );
-
+    const el = document.querySelector(`#start-kamp [data-summary="${team}-${stat}"]`);
     if (!el) return;
-
     flash(el);
 }
-
 
 function flashGoalScore() {
     const scoreEl = document.querySelector("#start-kamp .score");
     if (!scoreEl) return;
 
     scoreEl.classList.remove("flash-goal");
-    void scoreEl.offsetWidth; // force reflow
+    void scoreEl.offsetWidth;
     scoreEl.classList.add("flash-goal");
 }
 
-//Reset button fuctions:
+
+// ─────────────────────────────────────────────
+// Reset & stat control helpers
+// ─────────────────────────────────────────────
 
 function onResetMatchClick() {
 
     const confirmed = confirm(
         "Er du sikker på at du vil resette kampen? Dette vil nullstille klokke, omgang og all statistikk."
     );
+    if (!confirmed) return;
 
-    if (!confirmed) {
-        return;
-    }
+    matchEvents = [];
+    hasStarted = false;
 
-
-    // 1️⃣ Stop ticking immediately
     stopTicking();
-
-    // 2️⃣ Reset clock state
     clock.resetGame();
 
-    // 3️⃣ Reset stats state
-    matchStats.reset();
-    hasStarted = false; 
-
-    // 4️⃣ Re-render everything
     renderClock();
     renderHalf();
     renderScore();
     renderStatsSummary();
-
-    // 5️⃣ Update buttons
     updateMatchControls();
-}
+    
+    saveToStorage(STORAGE_KEYS.CURRENT_MATCH_EVENTS, []);
+    saveToStorage(STORAGE_KEYS.CURRENT_MATCH_META, { hasStarted: false });
 
+}
 
 function updateStatControls() {
     const controlsEl = document.querySelector("#start-kamp .controls");
@@ -433,28 +553,106 @@ function updateStatControls() {
 }
 
 
-// Bygge eksport til clipboard:
+// ─────────────────────────────────────────────
+// Event aggregation & export helpers
+// ─────────────────────────────────────────────
+
+function countEvents({ type, team, half = null }) {
+    return matchEvents.filter(e =>
+        e.type === type &&
+        e.team === team &&
+        (half === null || e.half === half)
+    ).length;
+}
+
+function formatStatLine(label, type) {
+    const homeFull = countEvents({ type, team: "home" });
+    const awayFull = countEvents({ type, team: "away" });
+    const homeHT = countEvents({ type, team: "home", half: 1 });
+    const awayHT = countEvents({ type, team: "away", half: 1 });
+
+    return `${label}: ${homeFull} – ${awayFull}  (HT: ${homeHT} – ${awayHT})`;
+}
+
+function getPlayerName(playerId) {
+    if (!playerId) return "(Ikke angitt spiller)";
+
+    const player =
+        getPlayersForTeam(homeTeamId)?.find(p => p.id === playerId) ||
+        getPlayersForTeam(awayTeamId)?.find(p => p.id === playerId);
+
+    if (!player) return "(Ikke angitt spiller)";
+
+    return `#${player.shirt} ${player.name}`;
+}
+
+function formatGoalsWithPlayers() {
+    const goalEvents = matchEvents
+        .filter(e => e.type === "goals")
+        .sort((a, b) => {
+            if (a.half !== b.half) return a.half - b.half;
+            return a.time - b.time;
+        });
+
+    if (goalEvents.length === 0) {
+        return "Ingen mål";
+    }
+
+    let homeGoals = 0;
+    let awayGoals = 0;
+    let currentHalf = goalEvents[0].half;
+
+    const lines = [];
+
+    for (const event of goalEvents) {
+
+        if (event.half !== currentHalf) {
+            lines.push("-------- Pause --------");
+            currentHalf = event.half;
+        }
+
+        if (event.team === "home") {
+            homeGoals++;
+        } else {
+            awayGoals++;
+        }
+
+        const minute = Math.floor(event.time / 60) + 1 + "'";
+        const score = `${homeGoals}–${awayGoals}`;
+        const playerName = getPlayerName(event.playerId);
+
+        lines.push(`${minute}   ${score}   ${playerName}`);
+    }
+
+    return lines.join("\n");
+}
+
+// ─────────────────────────────────────────────
+// Export / navigation
+// ─────────────────────────────────────────────
 
 function buildMatchSummary() {
     const home = matchConfig.homeTeamName;
     const away = matchConfig.awayTeamName;
 
-    const homeGoals = matchStats.get("home", "goals");
-    const awayGoals = matchStats.get("away", "goals");
-
-    const half = clock.getCurrentHalf();
-    const time = formatTime(clock.getRemainingSeconds());
+    const homeFT = countEvents({ type: "goals", team: "home" });
+    const awayFT = countEvents({ type: "goals", team: "away" });
+    const homeHT = countEvents({ type: "goals", team: "home", half: 1 });
+    const awayHT = countEvents({ type: "goals", team: "away", half: 1 });
 
     return `
-${home} - ${away}: ${homeGoals} – ${awayGoals} 
+${home} - ${away}: ${homeFT} – ${awayFT}  (HT: ${homeHT} – ${awayHT})
+
+MÅL
+${formatGoalsWithPlayers()}
 
 STATISTIKK
-Avslutninger: ${matchStats.get("home", "shots_total")} – ${matchStats.get("away", "shots_total")}
-Skudd på mål: ${matchStats.get("home", "shots_target")} – ${matchStats.get("away", "shots_target")}
-Corner: ${matchStats.get("home", "corners")} – ${matchStats.get("away", "corners")}
-Offside: ${matchStats.get("home", "offside")} – ${matchStats.get("away", "offside")}
-Gult kort: ${matchStats.get("home", "yellow_card")} – ${matchStats.get("away", "yellow_card")}
-Rødt kort: ${matchStats.get("home", "red_card")} – ${matchStats.get("away", "red_card")}
+${formatStatLine("Avslutninger", "shots_total")}
+${formatStatLine("Skudd på mål", "shots_target")}
+${formatStatLine("Corner", "corners")}
+${formatStatLine("Offside", "offside")}
+${formatStatLine("Gult kort", "yellow_card")}
+${formatStatLine("Rødt kort", "red_card")}
 `.trim();
 }
 
@@ -469,6 +667,9 @@ async function onSaveMatchClick() {
         console.error(err);
         return;
     }
+
+    saveToStorage(STORAGE_KEYS.CURRENT_MATCH_EVENTS, []);
+    saveToStorage(STORAGE_KEYS.CURRENT_MATCH_META, { hasStarted: false });
 
     goBack();
 }

@@ -196,12 +196,12 @@
 
                                 <div class="field">
                                     <label for="hometeam">Hjemmelag</label>
-                                    <input type="text" id="hometeam" name="hometeam" placeholder="Frisk Asker">
+                                    <select id="home-team" name="home-team"></select>
                                 </div>
 
                                 <div class="field">
                                     <label for="awayteam">Bortelag</label>
-                                    <input type="text" id="awayteam" name="awayteam" placeholder="GUI">
+                                    <select id="away-team" name="away-team"></select>
                                 </div>
 
                                 <div class="field">
@@ -452,6 +452,31 @@
             </div>
         </div>
     </div>
+
+
+
+    <!-- PLAYER ASSIGN SHEET-->
+    <div id="player-assign-sheet" class="player-assign hidden">
+        <div class="player-assign-panel">
+            <div class="player-assign-title">Who scored?</div>
+
+            <div class="player-assign-list" id="player-assign-list">
+            <!-- Player buttons injected here -->
+            </div>
+
+            <button class="player-assign-skip" id="player-assign-skip">
+            Skip
+         </button>
+        </div>
+    </div>
+
+
+
+
+
+
+
+
     <!-- Legg til JavaScript-filen for navigasjon -->
     <script type="module" src="navigation.js"></script>
 </body>

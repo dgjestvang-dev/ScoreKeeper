@@ -3,6 +3,9 @@
 
 export const matchConfig = {
     gametimeMinutes: null,
-    homeTeamName: null,
-    awayTeamName: null
+    homeTeamName: "",
+    awayTeamName: "",
+
+    homeTeamId: null,
+    awayTeamId: null
 };

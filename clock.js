@@ -54,6 +54,10 @@ export function createClock(halfDurationSeconds) {
         return Math.max(0, halfDuration - elapsed);
     }
 
+    function getElapsedSeconds() {
+        return halfDuration - getRemainingSeconds();
+    }
+    
     function isExpired() {
         // ✅ EXPLICITLY require that the half was started
         return hasStarted && getRemainingSeconds() === 0;
@@ -71,6 +75,10 @@ export function createClock(halfDurationSeconds) {
         // no-op (timestamp-based)
     }
 
+    
+    
+
+
     return {
         start,
         pause,
@@ -78,6 +86,7 @@ export function createClock(halfDurationSeconds) {
         resetForNextHalf,
         resetGame,
         getRemainingSeconds,
+        getElapsedSeconds,
         getCurrentHalf,
         isRunning,
         isExpired
