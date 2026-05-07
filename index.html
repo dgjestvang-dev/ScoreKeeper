@@ -398,19 +398,25 @@
 
 
 
-
-
-
-
-
-
-
-
-
-                     <!----------------------------------------------------------------------------->   
                     
-                    <section class="view menu" id="mine-lag">
-                        <h1>Mine lag</h1>
+                     <!----------------------------------------------------------------------------->   
+
+
+                    
+                    <section class="view" id="mine-lag">
+                        <div class="card">
+                            
+                        <button id="create-team-btn" class="primary-btn" data-nav="nytt-lag">
+                            Opprett lag →
+                        </button>
+
+
+                            <h3>Mine lag:</h3>
+
+                            <ul id="team-list" class="team-list">
+                                <!-- Lag legges inn her -->
+                            </ul>
+                        </div>
 
                         <!-- back button -->
                         <button data-back class="icon-button icon-only back-button" aria-label="Tilbake">
@@ -419,7 +425,102 @@
                              </svg>
                              <span class="label">Tilbake</span>
                         </button>
+
                     </section>
+                        
+                        
+                            <section class="view menu" id="nytt-lag">
+                                <div class="card">
+
+                                    <h3>Nytt lag</h3>
+
+                                    <div class="field">
+                                        <label for="new-team-name">Lagnavn</label>
+                                        <input
+                                            type="text"
+                                            id="new-team-name"
+                                            placeholder="FA G12"
+                                            autocomplete="off"
+                                        />
+                                    </div>
+                                    
+                                    <button id="save-team-btn" class="primary-btn" data-nav="mine-lag">
+                                        Lagre
+                                    </button>
+
+                                    <button id="cancel-team-btn" data-back class="secondary-btn">
+                                        X Avbryt
+                                    </button>
+
+                                </div>
+                            </section>
+
+                            <section class="view menu" id="lag-detaljer">
+                                <div class="card">
+
+                                    <h3 id="team-name-heading">Lag</h3>
+
+                                    <ul id="player-list" class="player-list">
+                                        <!-- Spillere rendres her -->
+                                    </ul>
+
+                                    <button
+                                        class="primary-btn"
+                                        data-nav="ny-spiller">
+                                        Legg til spiller →
+                                    </button>
+
+                                    <button
+                                        class="secondary-btn"
+                                        data-back>
+                                        ← Tilbake
+                                    </button>
+
+                                </div>
+                            </section>
+
+                                    <section class="view menu" id="ny-spiller">
+                                        <div class="card">
+
+                                            <h3>Ny spiller</h3>
+
+                                            <div class="field">
+                                                <label for="player-name">Navn</label>
+                                                <input
+                                                    type="text"
+                                                    id="player-name"
+                                                    placeholder="Ola Nordmann"
+                                                    autocomplete="off"
+                                                />
+                                            </div>
+
+                                            <div class="field">
+                                                <label for="player-shirt">Draktnummer</label>
+                                                <input
+                                                    type="number"
+                                                    id="player-shirt"
+                                                    placeholder="10"
+                                                    min="1"
+                                                    max="99"
+                                                />
+                                            </div>
+
+                                            <button
+                                                id="save-player-btn"
+                                                class="primary-btn">
+                                                💾 Lagre
+                                            </button>
+
+                                            <button
+                                                class="secondary-btn"
+                                                data-back>
+                                                ✖ Avbryt
+                                            </button>
+
+                                        </div>
+                                    </section>
+                          
+
 
                     <section class="view menu" id="motstandere">
                         <h1>Motstandere</h1>

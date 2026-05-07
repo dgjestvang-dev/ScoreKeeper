@@ -15,20 +15,6 @@ const STORAGE_KEY = "sk_teams";
 let teams = loadFromStorage(STORAGE_KEY, {});
 
 
-//MIDLERTIDIG LASTING AV LAG OG SPILLERE
-if (Object.keys(teams).length === 0) {
-    const friskId = createTeam("Frisk Asker");
-    const guiId = createTeam("GUI");
-    const askerId = createTeam("Asker SK");
-
-    // valgfritt: testspillere
-    addPlayer(friskId, { name: "Liam", shirt: 7 });
-    addPlayer(friskId, { name: "Vini", shirt: 13 });
-    addPlayer(guiId, { name: "Petter", shirt: 9 });
-    addPlayer(askerId, { name: "Ola", shirt: 9 });
-}
-
-
 function persist() {
     saveToStorage(STORAGE_KEY, teams);
 }

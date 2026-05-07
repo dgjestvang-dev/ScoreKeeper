@@ -1,107 +1,152 @@
-
+// ==============================
+// Navigation state
+// ==============================
 
 const historyStack = [];
 
-    // Handle navigation buttons
-    document.addEventListener('click', (event) => {
 
-        /* ---- DEBUG ----/*
-        /*console.log( 
-        'nav:', event.target.closest('[data-nav]')?.dataset.nav,
-        'back:', !!event.target.closest('[data-back]')
-        ); */
+// ==============================
+// Global click handler
+// ==============================
 
-        // Forward navigation
-        const navTarget = event.target.closest('[data-nav]');
-        if (navTarget) {
-            navigateTo(navTarget.dataset.nav);
-            return;
-        }
+document.addEventListener("click", (event) => {
 
-        
-        // Back navigation
-        const backButton = event.target.closest('[data-back]');
-        if (backButton) {
-            goBack();
-        }
-    });
+    // Forward navigation (data-nav)
+    const navTarget = event.target.closest("[data-nav]");
+    if (navTarget) {
+        navigateTo(navTarget.dataset.nav);
+        return;
+    }
 
-    function navigateTo(id) {
-    const current = document.querySelector('.view.active');
+    // Back navigation (data-back)
+    const backTarget = event.target.closest("[data-back]");
+    if (backTarget) {
+        goBack();
+    }
+});
+
+
+// ==============================
+// Forward navigation (PUSH)
+// ==============================
+
+function navigateTo(id) {
+    const current = document.querySelector(".view.active");
     const next = document.getElementById(id);
 
     if (!next || next === current) return;
 
-    historyStack.push(current.id);
-
-    current.classList.remove('active');
-    next.classList.remove('back');
-    next.classList.add('active');
-
-    activateView(id);
-    
-}
-
-    export function goBack() {
-        if (historyStack.length === 0) return;
-
-        const current = document.querySelector('.view.active');
-        const previousId = historyStack.pop();
-        const previous = document.getElementById(previousId);
-
-        current.classList.remove('active');
-        current.classList.add('back');
-        previous.classList.add('active');
-
-        activateView(previousId);
+    if (current) {
+        historyStack.push(current.id);
+        current.classList.remove("active");
+        current.classList.add("back");
     }
 
+    next.classList.remove("back");
+    next.classList.add("active");
 
+    activateView(id);
+}
+
+
+// ==============================
+// Replace navigation (DONE)
+// ==============================
+
+export function navigateToReplacingCurrent(id) {
+    const current = document.querySelector(".view.active");
+    const next = document.getElementById(id);
+
+    if (!next || next === current) return;
+
+    // ✅ Replace = fjern siste historikk‑entry
+    if (historyStack.length > 0) {
+        historyStack.pop();
+    }
+
+    if (current) {
+        current.classList.remove("active");
+        current.classList.add("back");
+    }
+
+    next.classList.remove("back");
+    next.classList.add("active");
+
+    activateView(id);
+}
+
+
+// ==============================
+// Back navigation (POP)
+// ==============================
+
+export function goBack() {
+    if (historyStack.length === 0) return;
+
+    const current = document.querySelector(".view.active");
+    const previousId = historyStack.pop();
+    const previous = document.getElementById(previousId);
+
+    if (!previous) return;
+
+    if (current) {
+        current.classList.remove("active");
+        current.classList.add("back");
+    }
+
+    previous.classList.remove("back");
+    previous.classList.add("active");
+
+    activateView(previousId);
+}
+
+
+// ==============================
+// View activation
+// ==============================
 
 import { initKampdag } from "./kampdag.js";
 import { initStartKamp } from "./start-kamp.js";
-
-
+import { initMineLag } from "./mine-lag.js";
+import { initNyttLag } from "./nytt-lag.js";
+import { initLagDetaljer } from "./lagdetaljer.js";
+import { initNySpiller } from "./ny-spiller.js";
 
 function activateView(viewId) {
     const screenBg = document.querySelector(".screen-bg");
 
-    // Reset all background states
+    // Reset background
     screenBg.classList.remove("bg-home", "bg-app");
 
-    
-    // Views that share the home-style background
     const homeLikeViews = ["home", "main_menu"];
 
-
-
-    // Apply correct background
-    
     if (homeLikeViews.includes(viewId)) {
         screenBg.classList.add("bg-home");
     } else {
         screenBg.classList.add("bg-app");
     }
 
-
-    // Existing view init logic
     if (viewId === "kampdag") {
         initKampdag();
-    }
-
-    if (viewId === "start-kamp") {
+    } else if (viewId === "start-kamp") {
         initStartKamp();
+    } else if (viewId === "mine-lag") {
+        initMineLag();
+    } else if (viewId === "nytt-lag") {
+        initNyttLag();
+    } else if (viewId === "lag-detaljer") {
+        initLagDetaljer();
+    } else if (viewId === "ny-spiller") {
+        initNySpiller();
     }
 }
 
 
+// ==============================
+// App boot
+// ==============================
 
 document.addEventListener("DOMContentLoaded", () => {
     const screenBg = document.querySelector(".screen-bg");
     screenBg.classList.add("bg-home");
 });
-
-
-
-
-
