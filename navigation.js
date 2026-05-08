@@ -111,6 +111,8 @@ import { initMineLag } from "./mine-lag.js";
 import { initNyttLag } from "./nytt-lag.js";
 import { initLagDetaljer } from "./lagdetaljer.js";
 import { initNySpiller } from "./ny-spiller.js";
+import { initRedigerSpiller } from "./rediger-spiller.js";
+import { initRedigerLag } from "./rediger-lag.js";
 
 function activateView(viewId) {
     const screenBg = document.querySelector(".screen-bg");
@@ -138,7 +140,12 @@ function activateView(viewId) {
         initLagDetaljer();
     } else if (viewId === "ny-spiller") {
         initNySpiller();
+    } else if (viewId === "rediger-spiller") {
+    initRedigerSpiller();
+    } else if (viewId === "rediger-lag") {
+    initRedigerLag();
     }
+
 }
 
 

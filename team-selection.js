@@ -7,3 +7,7 @@ export function setSelectedTeam(teamId) {
 export function getSelectedTeam() {
     return selectedTeamId;
 }
+
+export function clearSelectedTeam() {
+    selectedTeamId = null;
+}

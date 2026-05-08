@@ -51,3 +51,34 @@ export function getPlayersForTeam(teamId) {
     return teams[teamId]?.players ?? [];
 }
 
+// ─────────────────────────────────────────────
+// SLETT SPILLERE/LAG | OPPDATERE LAG
+// ─────────────────────────────────────────────
+
+
+export function deletePlayer(teamId, playerId) {
+    const team = teams[teamId];
+    if (!team) return;
+
+    team.players = team.players.filter(p => p.id !== playerId);
+    persist();
+}
+
+export function updateTeamName(teamId, newName) {
+    const team = teams[teamId];
+    if (!team) return;
+
+    team.name = newName;
+    persist();
+}
+
+
+export function deleteTeam(teamId) {
+ console.warn("deleteTeam: team not found", teamId);    if (!teams[teamId]) {
+        return;
+    }
+
+    delete teams[teamId];
+    persist();
+}
+

@@ -84,6 +84,11 @@
             <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
 -        </symbol>
 
+        <symbol id="icon-edit" viewBox="0 0 24 24">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+        </symbol>
+
 
     </svg>
 
@@ -445,7 +450,10 @@
                                     </div>
                                     
                                     <button id="save-team-btn" class="primary-btn" data-nav="mine-lag">
-                                        Lagre
+                                            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                                                <use href="#icon-save"> </use>
+                                            </svg>
+                                        <span class="label">Lagre</span>
                                     </button>
 
                                     <button id="cancel-team-btn" data-back class="secondary-btn">
@@ -469,6 +477,14 @@
                                         data-nav="ny-spiller">
                                         Legg til spiller →
                                     </button>
+                                    
+                                    <button
+                                        class="primary-btn" data-nav="rediger-lag">
+                                            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                                                <use href="#icon-edit"> </use>
+                                            </svg>
+                                        <span class="label">Rediger lag</span>
+                                    </button>
 
                                     <button
                                         class="secondary-btn"
@@ -478,6 +494,44 @@
 
                                 </div>
                             </section>
+                            
+                            <section class="view menu" id="rediger-lag">
+                                <div class="card">
+
+                                    <h3>Rediger lag</h3>
+
+                                    <div class="field">
+                                        <label for="edit-team-name">Lagnavn</label>
+                                        <input
+                                            type="text"
+                                            id="edit-team-name"
+                                            autocomplete="off"
+                                        />
+                                    </div>
+
+                                    <button
+                                        id="save-team-edit-btn" class="primary-btn">
+                                            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                                                    <use href="#icon-save"> </use>
+                                                </svg>
+                                            <span class="label">Lagre</span>
+                                    </button>
+                                  
+                                    <button
+                                        id="delete-team-btn"
+                                        class="danger-btn">
+                                        🗑️ Slett lag
+                                    </button>
+
+                                    <button
+                                        class="secondary-btn"
+                                        data-back>
+                                        ✖ Avbryt
+                                    </button>
+
+                                </div>
+                            </section>
+
 
                                     <section class="view menu" id="ny-spiller">
                                         <div class="card">
@@ -508,7 +562,10 @@
                                             <button
                                                 id="save-player-btn"
                                                 class="primary-btn">
-                                                💾 Lagre
+                                                    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                                                        <use href="#icon-save"> </use>
+                                                    </svg>
+                                                <span class="label">Lagre</span>
                                             </button>
 
                                             <button
@@ -519,6 +576,55 @@
 
                                         </div>
                                     </section>
+
+                                    <section class="view menu" id="rediger-spiller">
+                                        <div class="card">
+
+                                            <h3>Rediger spiller</h3>
+
+                                            <div class="field">
+                                                <label for="edit-player-name">Navn</label>
+                                                <input
+                                                    type="text"
+                                                    id="edit-player-name"
+                                                    autocomplete="off"
+                                                />
+                                            </div>
+
+                                            <div class="field">
+                                                <label for="edit-player-shirt">Draktnummer</label>
+                                                <input
+                                                    type="number"
+                                                    id="edit-player-shirt"
+                                                    min="1"
+                                                    max="99"
+                                                />
+                                            </div>
+
+                                            <button
+                                                id="save-player-edit-btn" class="primary-btn">
+                                                    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                                                        <use href="#icon-save"> </use>
+                                                    </svg>
+                                                <span class="label">Lagre</span>
+                                            </button>
+
+                                            <button
+                                                class="secondary-btn"
+                                                data-back>
+                                                ✖ Avbryt
+                                            </button>
+
+                                            <button
+                                                id="delete-player-btn"
+                                                class="danger-btn">
+                                                🗑️ Slett spiller
+                                            </button>
+
+
+                                        </div>
+                                    </section>
+
                           
 
 

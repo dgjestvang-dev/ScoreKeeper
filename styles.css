@@ -1036,8 +1036,16 @@ font-size: 1.3rem;
 
 
 .primary-btn {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: left;
+    gap: 14px;
+    
+
     width: 100%;
-    padding: 14px 16px;
+    padding: 10px 20px;
+    margin-top: 16px;
     margin-bottom: 16px;
 
     border: none;
@@ -1067,6 +1075,20 @@ font-size: 1.3rem;
     border-radius: 999px;
 
     font-weight: 500;
+}
+
+
+.danger-btn {
+    width: 100%;
+    padding: 12px;
+    margin-top: 16px;
+
+    background: #e74c3c;
+    color: white;
+    border: none;
+    border-radius: 999px;
+
+    font-weight: 600;
 }
 
 
@@ -1134,3 +1156,4 @@ font-size: 1.3rem;
 .player-item {
     padding: 10px 14px;
 }
+

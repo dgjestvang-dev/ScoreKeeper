@@ -1,5 +1,6 @@
 import { getTeam, getPlayersForTeam } from "./teams.js";
 import { getSelectedTeam } from "./team-selection.js";
+import { setSelectedPlayer } from "./player-selection.js";
 
 let teamNameHeading;
 let playerListEl;
@@ -38,10 +39,18 @@ function renderPlayerList(players) {
         return;
     }
 
-    players.forEach(player => {
-        const li = document.createElement("li");
-        li.className = "player-item";
-        li.textContent = `#${player.shirt} ${player.name}`;
-        playerListEl.appendChild(li);
+    
+players.forEach(player => {
+    const li = document.createElement("li");
+    li.className = "player-item";
+    li.textContent = `#${player.shirt} ${player.name}`;
+
+    li.dataset.nav = "rediger-spiller";
+    li.addEventListener("click", () => {
+        setSelectedPlayer(player.id);
     });
+
+    playerListEl.appendChild(li);
+});
+
 }
