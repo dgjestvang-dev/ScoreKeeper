@@ -526,6 +526,17 @@ h1  {
     padding: 12px 14px;
     font-size: 16px;
 
+
+    border-radius: 8px;
+    border: 1px solid #ccc;
+
+    background-color: #fff;
+}
+
+.field select {
+    padding: 12px 14px;
+    font-size: 16px;
+       
     border-radius: 8px;
     border: 1px solid #ccc;
 
@@ -1027,6 +1038,7 @@ font-size: 1.3rem;
 
 #mine-lag .card {
     padding: 16px;
+    
 }
 
 #mine-lag h3 {
@@ -1046,7 +1058,7 @@ font-size: 1.3rem;
     width: 100%;
     padding: 10px 20px;
     margin-top: 16px;
-    margin-bottom: 16px;
+    margin-bottom: 8px;
 
     border: none;
     border-radius: 999px;
@@ -1055,7 +1067,7 @@ font-size: 1.3rem;
     color: #000;
 
     font-size: 16px;
-    font-weight: 600;
+    font-weight: 500;
 
     cursor: pointer;
 }
@@ -1066,8 +1078,14 @@ font-size: 1.3rem;
 
 
 .secondary-btn {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: left;
+    gap: 14px;
+
     width: 100%;
-    padding: 12px;
+    padding: 10px 20px;
     margin-top: 8px;
 
     background: transparent;
@@ -1079,11 +1097,17 @@ font-size: 1.3rem;
 
 
 .danger-btn {
-    width: 100%;
-    padding: 12px;
-    margin-top: 16px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: left;
+    gap: 14px;
 
-    background: #e74c3c;
+    width: 100%;
+    padding: 10px 20px;
+    margin-top: 8px;
+
+    background: #c62828;
     color: white;
     border: none;
     border-radius: 999px;
