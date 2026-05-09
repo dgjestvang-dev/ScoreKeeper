@@ -161,7 +161,7 @@
                     <section class="view menu" id="main_menu">
                         <h1>Hovedmeny</h1>
                         <div class="menu-panel button-group">
-                            <button data-nav="kampdag" class="icon-button">
+                            <button data-nav="kampdag">
                                 <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
                                     <use href="#icon-matchday"></use>
                                 </svg>
@@ -420,22 +420,24 @@
 
 
                     
-                    <section class="view" id="mine-lag">
-                        <div class="card">
+                    <section class="view menu" id="mine-lag">
+                        <div class="menu-panel button-group">
                             
-                        <button id="create-team-btn" class="primary-btn" data-nav="nytt-lag">
-                            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-                                <use href="#icon-pluss"> </use>
-                            </svg>
-                        <span class="label">Opprett lag</span>
-                        </button>
-
-
                             <h3>Mine lag:</h3>
 
                             <ul id="team-list" class="team-list">
-                                <!-- Lag legges inn her -->
+                                <!-- Lag rendres inn her -->
                             </ul>
+
+                            <button class="sidestilte-knapper" id="create-team-btn"  data-nav="nytt-lag">
+                                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                                    <use href="#icon-pluss"> </use>
+                                </svg>
+                            <span class="label">Opprett lag</span>
+                            </button>
+
+
+                            
                         </div>
 
                         <!-- back button -->
@@ -450,7 +452,7 @@
                         
                         
                             <section class="view menu" id="nytt-lag">
-                                <div class="card">
+                                <div class="menu-panel button-group">
 
                                     <h3>Nytt lag</h3>
 
@@ -463,26 +465,28 @@
                                             autocomplete="off"
                                         />
                                     </div>
-                                    
-                                    <button id="save-team-btn" class="primary-btn" data-nav="mine-lag">
-                                            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-                                                <use href="#icon-save"> </use>
-                                            </svg>
-                                        <span class="label">Lagre</span>
-                                    </button>
 
-                                    <button id="cancel-team-btn" data-back class="secondary-btn">
-                                        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-                                                <use href="#icon-save"> </use>
-                                            </svg>
-                                        <span class="label">Avbryt</span>
-                                    </button>
+                                    <div class="sidestilte-knapper">
+                                        <button id="save-team-btn"  data-nav="mine-lag">
+                                                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                                                    <use href="#icon-save"> </use>
+                                                </svg>
+                                            <span class="label">Lagre</span>
+                                        </button>
+
+                                        <button id="cancel-team-btn" data-back>
+                                            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                                                    <use href="#icon-x"> </use>
+                                                </svg>
+                                            <span class="label">Avbryt</span>
+                                        </button>
+                                    </div>
 
                                 </div>
                             </section>
 
                             <section class="view menu" id="lag-detaljer">
-                                <div class="card">
+                                <div class="menu-panel button-group">
 
                                     <h3 id="team-name-heading">Lag</h3>
 
@@ -490,35 +494,34 @@
                                         <!-- Spillere rendres her -->
                                     </ul>
 
-                                    <button
-                                        class="primary-btn" data-nav="ny-spiller">
-                                        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-                                                <use href="#icon-pluss"> </use>
-                                            </svg>
-                                        <span class="label">Legg til spiller</span>
-                                    </button>
-                                    
-                                    <button
-                                        class="primary-btn" data-nav="rediger-lag">
+                                   
+                                        <button data-nav="ny-spiller">
                                             <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-                                                <use href="#icon-edit"> </use>
-                                            </svg>
-                                        <span class="label">Rediger lag</span>
-                                    </button>
+                                                    <use href="#icon-pluss"> </use>
+                                                </svg>
+                                            <span class="label">Legg til spiller</span>
+                                        </button>
+                                        
+                                        <button data-nav="rediger-lag">
+                                                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                                                    <use href="#icon-edit"> </use>
+                                                </svg>
+                                            <span class="label">Rediger lag</span>
+                                        </button>
 
-                                    <button
-                                        class="secondary-btn" data-back>
-                                        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-                                                <use href="#icon-back"> </use>
-                                            </svg>
-                                        <span class="label">Tilbake</span>
-                                    </button>
+                                        <button data-back>
+                                            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                                                    <use href="#icon-back"> </use>
+                                                </svg>
+                                            <span class="label">Tilbake</span>
+                                        </button>
+                                    
 
                                 </div>
                             </section>
                             
                             <section class="view menu" id="rediger-lag">
-                                <div class="card">
+                                <div class="menu-panel button-group">
 
                                     <h3>Rediger lag</h3>
 
@@ -531,26 +534,23 @@
                                         />
                                     </div>
 
-                                    <button
-                                        id="save-team-edit-btn" class="primary-btn">
+                                    <button id="save-team-edit-btn">
                                             <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
                                                     <use href="#icon-save"> </use>
                                                 </svg>
                                             <span class="label">Lagre</span>
                                     </button>
                                   
-                                    <button
-                                        id="delete-team-btn" class="danger-btn">
+                                    <button id="delete-team-btn">
                                         <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
                                                     <use href="#icon-delete"> </use>
                                                 </svg>
                                             <span class="label">Slett lag</span>
                                     </button>
 
-                                    <button
-                                        class="secondary-btn" data-back>
+                                    <button data-back>
                                         <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-                                                <use href="#icon-save"> </use>
+                                                <use href="#icon-x"> </use>
                                             </svg>
                                         <span class="label">Avbryt</span>
                                     </button>
@@ -560,7 +560,7 @@
 
 
                                     <section class="view menu" id="ny-spiller">
-                                        <div class="card">
+                                        <div class="menu-panel button-group">
 
                                             <h3>Ny spiller</h3>
 
@@ -585,19 +585,16 @@
                                                 />
                                             </div>
 
-                                            <button
-                                                id="save-player-btn"
-                                                class="primary-btn">
+                                            <button id="save-player-btn">
                                                     <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
                                                         <use href="#icon-save"> </use>
                                                     </svg>
                                                 <span class="label">Lagre</span>
                                             </button>
 
-                                            <button
-                                                class="secondary-btn" data-back>
+                                            <button data-back>
                                                 <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-                                                    <use href="#icon-save"> </use>
+                                                    <use href="#icon-x"> </use>
                                                 </svg>
                                                 <span class="label">Avbryt</span>
                                             </button>
@@ -606,7 +603,7 @@
                                     </section>
 
                                     <section class="view menu" id="rediger-spiller">
-                                        <div class="card">
+                                        <div class="menu-panel button-group">
 
                                             <h3>Rediger spiller</h3>
 
@@ -629,26 +626,23 @@
                                                 />
                                             </div>
 
-                                            <button
-                                                id="save-player-edit-btn" class="primary-btn">
+                                            <button id="save-player-edit-btn">
                                                     <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
                                                         <use href="#icon-save"> </use>
                                                     </svg>
                                                 <span class="label">Lagre</span>
                                             </button>
 
-                                            <button
-                                                id="delete-player-btn" class="danger-btn">
+                                            <button id="delete-player-btn">
                                                 <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
                                                     <use href="#icon-delete"> </use>
                                                 </svg>
                                                 <span class="label">Slett spiller</span>
                                             </button>
 
-                                            <button
-                                                class="secondary-btn" data-back>
+                                            <button data-back>
                                                 <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-                                                    <use href="#icon-save"> </use>
+                                                    <use href="#icon-x"> </use>
                                                 </svg>
                                                 <span class="label">Avbryt</span>
                                             </button>
