@@ -494,27 +494,30 @@
                                         <!-- Spillere rendres her -->
                                     </ul>
 
-                                   
-                                        <button data-nav="ny-spiller">
-                                            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-                                                    <use href="#icon-pluss"> </use>
-                                                </svg>
-                                            <span class="label">Legg til spiller</span>
-                                        </button>
-                                        
-                                        <button data-nav="rediger-lag">
+                                        <div class="primary-actions">
+                                            <button data-nav="ny-spiller" class="action-button">
                                                 <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-                                                    <use href="#icon-edit"> </use>
-                                                </svg>
-                                            <span class="label">Rediger lag</span>
-                                        </button>
+                                                        <use href="#icon-pluss"> </use>
+                                                    </svg>
+                                                <span class="label">Legg til spiller</span>
+                                            </button>
+                                                
+                                                <div class ="secondary-actions">                                              
+                                                    <button data-nav="rediger-lag" class="action-button" ID="test-id">
+                                                            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                                                                <use href="#icon-edit"> </use>
+                                                            </svg>
+                                                        <span class="label">Rediger lag</span>
+                                                    </button>
 
-                                        <button data-back>
-                                            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-                                                    <use href="#icon-back"> </use>
-                                                </svg>
-                                            <span class="label">Tilbake</span>
-                                        </button>
+                                                    <button data-back class="action-button">
+                                                        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                                                                <use href="#icon-back"> </use>
+                                                            </svg>
+                                                        <span class="label">Tilbake</span>
+                                                    </button>
+                                                </div>
+                                        </div>
                                     
 
                                 </div>
@@ -523,7 +526,7 @@
                             <section class="view menu" id="rediger-lag">
                                 <div class="menu-panel button-group">
 
-                                    <h3>Rediger lag</h3>
+                                    <h3>Rediger lag:</h3>
 
                                     <div class="field">
                                         <label for="edit-team-name">Lagnavn</label>
@@ -533,27 +536,29 @@
                                             autocomplete="off"
                                         />
                                     </div>
+                                    <div class="primary-actions">
+                                        <button id="save-team-edit-btn" class="action-button">
+                                                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                                                        <use href="#icon-save"> </use>
+                                                    </svg>
+                                                <span class="label">Lagre</span>
+                                        </button>
+                                        <div class ="secondary-actions"> 
+                                            <button id="delete-team-btn" class="action-button">
+                                                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                                                            <use href="#icon-delete"> </use>
+                                                        </svg>
+                                                    <span class="label">Slett</span>
+                                            </button>
 
-                                    <button id="save-team-edit-btn">
-                                            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-                                                    <use href="#icon-save"> </use>
-                                                </svg>
-                                            <span class="label">Lagre</span>
-                                    </button>
-                                  
-                                    <button id="delete-team-btn">
-                                        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-                                                    <use href="#icon-delete"> </use>
-                                                </svg>
-                                            <span class="label">Slett lag</span>
-                                    </button>
-
-                                    <button data-back>
-                                        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-                                                <use href="#icon-x"> </use>
-                                            </svg>
-                                        <span class="label">Avbryt</span>
-                                    </button>
+                                            <button data-back class="action-button">
+                                                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                                                        <use href="#icon-x"> </use>
+                                                    </svg>
+                                                <span class="label">Avbryt</span>
+                                            </button>
+                                        </div>
+                                    </div>
 
                                 </div>
                             </section>
@@ -573,7 +578,7 @@
                                                     autocomplete="off"
                                                 />
                                             </div>
-
+                                            
                                             <div class="field">
                                                 <label for="player-shirt">Draktnummer</label>
                                                 <input
@@ -584,20 +589,22 @@
                                                     max="99"
                                                 />
                                             </div>
-
-                                            <button id="save-player-btn">
-                                                    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-                                                        <use href="#icon-save"> </use>
-                                                    </svg>
-                                                <span class="label">Lagre</span>
-                                            </button>
-
-                                            <button data-back>
-                                                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-                                                    <use href="#icon-x"> </use>
-                                                </svg>
-                                                <span class="label">Avbryt</span>
-                                            </button>
+                                            <div class="primary-actions">
+                                                <button id="save-player-btn" class="action-button">
+                                                        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                                                            <use href="#icon-save"> </use>
+                                                        </svg>
+                                                    <span class="label">Lagre</span>
+                                                </button>
+                                                <div class="secondary-actions">
+                                                    <button data-back class="action-button">
+                                                        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                                                            <use href="#icon-x"> </use>
+                                                        </svg>
+                                                        <span class="label">Avbryt</span>
+                                                    </button>
+                                                </div>
+                                            </div>
 
                                         </div>
                                     </section>
@@ -625,27 +632,31 @@
                                                     max="99"
                                                 />
                                             </div>
+                                            <div class="primary-actions">
+                                                <button id="save-player-edit-btn" class="action-button">
+                                                        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                                                            <use href="#icon-save"> </use>
+                                                        </svg>
+                                                    <span class="label">Lagre</span>
+                                                </button>
+                                            </div>
 
-                                            <button id="save-player-edit-btn">
+                                            <div class="secondary-actions">
+
+                                                <button id="delete-player-btn" class="action-button">
                                                     <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-                                                        <use href="#icon-save"> </use>
+                                                        <use href="#icon-delete"> </use>
                                                     </svg>
-                                                <span class="label">Lagre</span>
-                                            </button>
+                                                    <span class="label">Slett</span>
+                                                </button>
 
-                                            <button id="delete-player-btn">
-                                                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-                                                    <use href="#icon-delete"> </use>
-                                                </svg>
-                                                <span class="label">Slett spiller</span>
-                                            </button>
-
-                                            <button data-back>
-                                                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-                                                    <use href="#icon-x"> </use>
-                                                </svg>
-                                                <span class="label">Avbryt</span>
-                                            </button>
+                                                <button data-back class="action-button">
+                                                    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                                                        <use href="#icon-x"> </use>
+                                                    </svg>
+                                                    <span class="label">Avbryt</span>
+                                                </button>
+                                            </div>
 
 
                                         </div>

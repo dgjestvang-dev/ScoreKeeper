@@ -604,7 +604,7 @@ h1  {
     align-items: center;
     line-height: 1;
     text-align: left;
-    gap: 14px;
+    gap: 14px;    
     
 }
 
@@ -613,6 +613,61 @@ h1  {
     height: 22px;
 }
 
+
+
+/* EKSTRA KODE PT */
+.primary-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 16px;
+    gap: 14px;
+    width: 100%;
+}
+
+
+.primary-actions .action-button {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    text-align: left;
+}
+
+.secondary-actions {
+    display: flex;
+    align-items: center;    
+    gap: 14px;
+    width: 100%;
+}
+
+.secondary-actions > button {
+    display: flex;
+    align-items: center;
+    flex: 0 1 auto;
+    line-height: 1;
+    text-align: left;
+    gap: 14px;
+    border: solid 1px black;
+    background-color: #FF9B63;
+    flex: 1;
+    
+}
+
+.view.menu .primary-actions .icon{
+    width: 22px;
+    height: 22px;
+}
+
+.view.menu .secondary-actions .icon{
+    width: 22px;
+    height: 22px;
+}
+
+.view.menu .secondary-actions #test-id {
+    font-size: 12px;
+
+}
 
 
 /* !!!!!!! HER KOMMER CSS-EN FOR LIVE KAMP VISNINGEN !!!!!!! */
