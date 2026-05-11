@@ -3,15 +3,23 @@
 // Responsibility: show players, return playerId/null
 // ─────────────────────────────────────────────
 
-export function openPlayerAssign(players, onSelect) {
+export function openPlayerAssign(players, onSelect, options = {}) {
   const sheet = document.getElementById("player-assign-sheet");
   const list = document.getElementById("player-assign-list");
   const skipBtn = document.getElementById("player-assign-skip");
+  const titleEl = sheet.querySelector(".player-assign-title");
 
   if (!sheet || !list || !skipBtn) {
     console.warn("Player assign UI elements missing");
     return;
   }
+
+  
+  if (titleEl) {
+    titleEl.textContent =
+      options.title ?? "Hvordan ble målet scoret?";
+  }
+
 
   // Clear previous buttons
   list.innerHTML = "";
@@ -31,6 +39,11 @@ export function openPlayerAssign(players, onSelect) {
   });
 
   // Skip button
+
+  
+  skipBtn.textContent =
+    options.skipLabel ?? "Hopp over";
+
   skipBtn.onclick = () => {
     closePlayerAssign();
     onSelect(null);

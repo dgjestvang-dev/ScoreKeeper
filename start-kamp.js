@@ -36,6 +36,8 @@ let hasStarted = false;
 // Event‑sourced match data (single source of truth)
 let matchEvents = [];
 
+let pendingGoalEvent = null;
+
 
 // ─────────────────────────────────────────────
 // TEMP players and TEAMS for Phase 2b Will be replaced by real team data later.
@@ -415,27 +417,64 @@ function onStatButtonClick(event) {
     renderScore();
     renderStatsSummary();
 
-    // ✅ Spillervalgs-popup KUN for goals
+    // ✅ Spillervalgs-popup KUN for goals (utvidet med assist-flyt)
     if (stat === "goals" && action === "inc" && baseEvent) {
-        flashGoalScore();
+    flashGoalScore();
 
-        const teamPlayers =
-            team === "home"
-                ? getPlayersForTeam(homeTeamId)
-                : getPlayersForTeam(awayTeamId);
+    // ▶️ Opprett pendingGoalEvent HER
+    pendingGoalEvent = {
+        baseEvent,
+        team,
+        teamId: baseEvent.teamId,
+        scorerId: null,
+        assistId: null,
+        half,
+        time,
+        timestamp
+    };
 
-        openPlayerAssign(teamPlayers, (playerId) => {
-            if (playerId) {
-                baseEvent.playerId = playerId;
+    const teamPlayers =
+        team === "home"
+            ? getPlayersForTeam(homeTeamId)
+            : getPlayersForTeam(awayTeamId);
 
-                // ✅ VIKTIG: lagre etter at spilleren er valgt
-                saveToStorage(
-                    STORAGE_KEYS.CURRENT_MATCH_EVENTS,
-                    matchEvents
-                );
-            }
-        });
+    
+    const playersWithOwnGoal = [
+        {
+            id: "__OWN_GOAL__",
+            name: "Selvmål",
+            shirt: ""
+        },
+        ...teamPlayers
+    ];
+
+    openPlayerAssign(
+    playersWithOwnGoal,
+    (playerId) => {
+        if (!playerId) return;
+
+        // ✅ Selvmål valgt
+        if (playerId === "__OWN_GOAL__") {
+            baseEvent.playerId = null;
+            baseEvent.isOwnGoal = true;
+
+            finalizeOwnGoal(baseEvent);
+            return;
+        }
+
+        // ✅ Vanlig mål
+        pendingGoalEvent.scorerId = playerId;
+        baseEvent.playerId = playerId;
+
+        openAssistAssign(teamPlayers, playerId);
+    },
+    {
+        title: "Hvem scoret?",
+        skipLabel: "Avbryt"
     }
+);
+}
+
 
     flashStat(stat, team);
 
@@ -444,6 +483,65 @@ function onStatButtonClick(event) {
         STORAGE_KEYS.CURRENT_MATCH_EVENTS,
         matchEvents
     );
+}
+
+
+function openAssistAssign(players, scorerId) {
+    // Filtrer bort målscorer
+    const assistPlayers = players.filter(p => p.id !== scorerId);
+
+    openPlayerAssign(assistPlayers, (assistId) => {
+        // assist er valgfri
+        pendingGoalEvent.assistId = assistId || null;
+
+        finalizeGoalEvent();
+    }, {
+        title: "Hvem hadde assist? (valgfritt)",
+        skipLabel: "Ingen assist"
+    });
+}
+
+function finalizeGoalEvent() {
+    const { baseEvent, assistId } = pendingGoalEvent;
+
+    // ✅ Registrer assist som eget event (hvis valgt)
+    if (assistId) {
+        matchEvents.push({
+            id: generateId(),
+            type: "assists",
+            team: baseEvent.team,
+            teamId: baseEvent.teamId,
+            playerId: assistId,
+            half: baseEvent.half,
+            time: baseEvent.time,
+            timestamp: baseEvent.timestamp
+        });
+    }
+
+    
+function finalizeOwnGoal(baseEvent) {
+    // marker eksplisitt
+    baseEvent.isOwnGoal = true;
+
+    saveToStorage(
+        STORAGE_KEYS.CURRENT_MATCH_EVENTS,
+        matchEvents
+    );
+
+    renderStatsSummary();
+    pendingGoalEvent = null;
+}
+
+
+    // ✅ Lagre alt ferdig
+    saveToStorage(
+        STORAGE_KEYS.CURRENT_MATCH_EVENTS,
+        matchEvents
+    );
+
+    renderStatsSummary();
+
+    pendingGoalEvent = null;
 }
 
 
@@ -464,6 +562,7 @@ function renderStatsSummary() {
     renderStat("corners");
     renderStat("shots_target");
     renderStat("shots_total");
+    renderStat("assists"); 
     renderStat("yellow_card");
     renderStat("offside");
     renderStat("red_card");
@@ -618,10 +717,26 @@ function formatGoalsWithPlayers() {
         }
 
         const minute = Math.floor(event.time / 60) + 1 + "'";
-        const score = `${homeGoals}–${awayGoals}`;
-        const playerName = getPlayerName(event.playerId);
+        const score = `${homeGoals}–${awayGoals}`;        
+        
+        // 🔍 Finn eventuell assist for dette målet
+        const assistEvent = matchEvents.find(e =>
+            e.type === "assists" &&
+            e.team === event.team &&
+            e.half === event.half &&
+            e.time === event.time
+        );
 
-        lines.push(`${minute}   ${score}   ${playerName}`);
+        const playerName = event.isOwnGoal
+            ? "Selvmål"
+            : getPlayerName(event.playerId);
+
+        const assistText = assistEvent
+            ? ` (${getPlayerName(assistEvent.playerId)})`
+            : "";
+
+
+        lines.push(`${minute}   ${score}   ${playerName}${assistText}`);
     }
 
     return lines.join("\n");

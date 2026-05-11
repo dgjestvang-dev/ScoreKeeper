@@ -615,7 +615,7 @@ h1  {
 
 
 
-/* EKSTRA KODE PT */
+/* Knapper/logikk hoved div = .primary actions, alle knapper lagres som action-button. Sekundær div = secondary-actions*/
 .primary-actions {
     display: flex;
     flex-direction: column;
@@ -664,10 +664,6 @@ h1  {
     height: 22px;
 }
 
-.view.menu .secondary-actions #test-id {
-    font-size: 12px;
-
-}
 
 
 /* !!!!!!! HER KOMMER CSS-EN FOR LIVE KAMP VISNINGEN !!!!!!! */
@@ -1087,77 +1083,6 @@ font-size: 1.3rem;
   border: none;
   color: #666;
 }
-
-
-
-.primary-btn {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    text-align: left;
-    gap: 14px;
-    
-
-    width: 100%;
-    padding: 10px 20px;
-    margin-top: 16px;
-    margin-bottom: 8px;
-
-    border: none;
-    border-radius: 999px;
-
-    background: #ff8c2b;
-    color: #000;
-
-    font-size: 16px;
-    font-weight: 500;
-
-    cursor: pointer;
-}
-
-.primary-btn:active {
-    transform: scale(0.98);
-}
-
-
-.secondary-btn {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    text-align: left;
-    gap: 14px;
-
-    width: 100%;
-    padding: 10px 20px;
-    margin-top: 8px;
-
-    background: transparent;
-    border: 1px solid rgba(0,0,0,0.4);
-    border-radius: 999px;
-
-    font-weight: 500;
-}
-
-
-.danger-btn {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    text-align: left;
-    gap: 14px;
-
-    width: 100%;
-    padding: 10px 20px;
-    margin-top: 8px;
-
-    background: #c62828;
-    color: white;
-    border: none;
-    border-radius: 999px;
-
-    font-weight: 600;
-}
-
 
 
 .team-list {
