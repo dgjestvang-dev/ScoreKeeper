@@ -30,7 +30,7 @@ document.addEventListener("click", (event) => {
 // Forward navigation (PUSH)
 // ==============================
 
-function navigateTo(id) {
+export function navigateTo(id) {
     const current = document.querySelector(".view.active");
     const next = document.getElementById(id);
 
@@ -113,6 +113,7 @@ import { initLagDetaljer } from "./lagdetaljer.js";
 import { initNySpiller } from "./ny-spiller.js";
 import { initRedigerSpiller } from "./rediger-spiller.js";
 import { initRedigerLag } from "./rediger-lag.js";
+import { initKampRapport } from "./kamp-rapport.js";
 
 function activateView(viewId) {
     const screenBg = document.querySelector(".screen-bg");
@@ -144,7 +145,10 @@ function activateView(viewId) {
     initRedigerSpiller();
     } else if (viewId === "rediger-lag") {
     initRedigerLag();
+    } else if (viewId === "kamp-rapport") {
+    initKampRapport();
     }
+
 
 }
 

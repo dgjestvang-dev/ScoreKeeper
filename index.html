@@ -102,7 +102,23 @@
             <line x1="14" x2="14" y1="11" y2="17" />
         </symbol>
 
+        <symbol id="icon-file" viewBox="0 0 24 24">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+            <line x1="16" x2="8" y1="13" y2="13" />
+            <line x1="16" x2="8" y1="17" y2="17" />
+            <polyline points="10 9 9 9 8 9" />
+        </symbol>
+
+        <symbol id="icon-export" viewBox="0 0 24 24">
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+            <polyline points="15 3 21 3 21 9" />
+            <line x1="10" x2="21" y1="14" y2="3" />
+        </symbol>
+
     </svg>
+
+   
 
 
     <!-- Hovedbeholder for appen -->
@@ -404,13 +420,54 @@
                                     <span class="label">Reset kamp</span>
                                 </button>
                                 
-                                <button id="save-match-btn" class="secondary icon-only" aria-label="Lagre og tilbake">
+                                <button id="save-match-btn" class="secondary icon-only" aria-label="Tilbake">
                                     <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-                                        <use href="#icon-save"> </use>
+                                        <use href="#icon-back"> </use>
                                     </svg>
-                                    <span class="label">Lagre og tilbake</span>
+                                    <span class="label">Tilbake</span>
                                 </button>
+
+                                <button id="game-report-btn" class="secondary icon-only" aria-label="Se kamprapport">
+                                    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                                        <use href="#icon-file"> </use>
+                                    </svg>
+                                    <span class="label">Kamprapport</span>
+                                </button>
+
                             </div>
+
+                        </section>
+
+                            
+                        <section id="kamp-rapport" class="view report-view">
+
+                            <div id="report-summary" class="report-summary"></div>
+
+                            <h3 class="section-title">Kamphendelser</h3>
+                            <div id="report-events" class="report-events"></div>
+
+                            <h3 class="section-title">Statistikk</h3>
+                            <div id="report-stats" class="report-stats"></div>
+                            
+                            <div class="actions-row">
+                                <div class="primary-actions">
+                                    <button id="export-report-btn" class="action-button">
+                                        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                                            <use href="#icon-export"> </use>
+                                        </svg>
+                                        <span class="label">Eksporter</span>
+                                    </button>
+                                </div>
+                                <div class="secondary-actions">
+                                    <button data-back class="action-button">
+                                        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                                            <use href="#icon-back"> </use>
+                                        </svg>
+                                        <span class="label">Tilbake</span>
+                                    </button>
+                                </div>
+                            </div>
+                            
 
                         </section>
 

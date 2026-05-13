@@ -4,12 +4,13 @@
 
 import { createClock } from "./clock.js";
 import { matchConfig } from "./match-config.js";
-import { goBack } from "./navigation.js";
+import { goBack, navigateTo } from "./navigation.js";
 import { generateId } from "./utils.js";
 
 import { loadFromStorage, saveToStorage } from "./storage.js";
 import { getTeams, getPlayersForTeam } from "./teams.js";
 import { openPlayerAssign } from "./player-assign-ui.js";
+
 
 
 
@@ -100,6 +101,13 @@ export function initStartKamp() {
     }
     controlsEl.addEventListener("click", onStatButtonClick);
 
+    const reportBtn = document.getElementById("game-report-btn");
+
+    reportBtn.addEventListener("click", () => {
+        navigateTo("kamp-rapport");
+    });
+
+
     // Query DOM (view is now active)
     timeEl = document.querySelector("#start-kamp .clock .time");
     homeTeamEl = document.querySelector("#start-kamp .team.home");
@@ -147,7 +155,7 @@ export function initStartKamp() {
     startStopBtn.addEventListener("click", onStartStopClick);
     nextHalfBtn.addEventListener("click", onNextHalfClick);
     resetMatchBtn.addEventListener("click", onResetMatchClick);
-    saveMatchBtn.addEventListener("click", onSaveMatchClick);
+    saveMatchBtn.addEventListener("click", onBackClick);
 
     // Ensure final button state after DOM settles
     requestAnimationFrame(() => {
@@ -801,17 +809,30 @@ function countEvents({ type, team, half = null }) {
     ).length;
 }
 
-function formatStatLine(label, type) {
-    const homeFull = countEvents({ type, team: "home" });
-    const awayFull = countEvents({ type, team: "away" });
-    const homeHT = countEvents({ type, team: "home", half: 1 });
-    const awayHT = countEvents({ type, team: "away", half: 1 });
 
-    return `${label}: ${homeFull} – ${awayFull}  (HT: ${homeHT} – ${awayHT})`;
+function formatStatLine(label, type) {
+    const homeFull = countEvents({ type, team: "home" }) || 0;
+    const awayFull = countEvents({ type, team: "away" }) || 0;
+
+    const homeHT = countEvents({ type, team: "home", half: 1 }) || 0;
+    const awayHT = countEvents({ type, team: "away", half: 1 }) || 0;
+
+    return `${label}: ${homeFull} – ${awayFull} (HT: ${homeHT} – ${awayHT})`;
 }
 
-function getPlayerName(playerId) {
-    if (!playerId) return "(Ikke angitt spiller)";
+
+
+
+function getPlayerName(playerId, team) {
+    if (!playerId) {
+        const teamName =
+            team === "home"
+                ? matchConfig.homeTeamName
+                : matchConfig.awayTeamName;
+
+        return `(${teamName})`;
+    }
+
 
     const player =
         getPlayersForTeam(homeTeamId)?.find(p => p.id === playerId) ||
@@ -866,11 +887,13 @@ function formatGoalsWithPlayers() {
 
         const playerName = event.isOwnGoal
             ? "Selvmål"
-            : getPlayerName(event.playerId);
+            : getPlayerName(event.playerId, event.team);
 
+        
         const assistText = assistEvent
-            ? ` (${getPlayerName(assistEvent.playerId)})`
+            ? ` (${getPlayerName(assistEvent.playerId, assistEvent.team)})`
             : "";
+
 
 
         lines.push(`${minute}   ${score}   ${playerName}${assistText}`);
@@ -921,7 +944,7 @@ function formatCardsWithPlayers() {
                 "🟥".repeat(reds);
         }
 
-        const playerName = getPlayerName(event.playerId);
+        const playerName = getPlayerName(event.playerId, event.team);
 
         lines.push(`${minute}   ${symbol}   ${playerName}`);
     }
@@ -932,53 +955,57 @@ function formatCardsWithPlayers() {
 
 
 // ─────────────────────────────────────────────
-// Export / navigation
+// Navigation
 // ─────────────────────────────────────────────
 
-function buildMatchSummary() {
+export function buildMatchSummaryParts() {
     const home = matchConfig.homeTeamName;
     const away = matchConfig.awayTeamName;
 
     const homeFT = countEvents({ type: "goals", team: "home" });
     const awayFT = countEvents({ type: "goals", team: "away" });
+
     const homeHT = countEvents({ type: "goals", team: "home", half: 1 });
     const awayHT = countEvents({ type: "goals", team: "away", half: 1 });
-
-    return `
-${home} - ${away}: ${homeFT} – ${awayFT}  (HT: ${homeHT} – ${awayHT})
-
-MÅL
-${formatGoalsWithPlayers()}
-
-
-KORT
-${formatCardsWithPlayers()}
-
-
-STATISTIKK
-${formatStatLine("Avslutninger", "shots_total")}
-${formatStatLine("Skudd på mål", "shots_target")}
-${formatStatLine("Corner", "corners")}
-${formatStatLine("Offside", "offside")}
-${formatStatLine("Gult kort", "yellow_card")}
-${formatStatLine("Rødt kort", "red_card")}
-`.trim();
+    
+    return {
+        header: `${home} - ${away}: ${homeFT} – ${awayFT}  (HT: ${homeHT} – ${awayHT})`,
+        events: formatGoalsWithPlayers().split("\n"),
+        cards: formatCardsWithPlayers().split("\n"),
+        stats: [
+            formatStatLine("Avslutninger", "shots_total"),
+            formatStatLine("Skudd på mål", "shots_target"),
+            formatStatLine("Corner", "corners"),
+            formatStatLine("Offside", "offside"),
+            formatStatLine("Gult kort", "yellow_card"),
+            formatStatLine("Rødt kort", "red_card")
+        ]
+    };
 }
 
-async function onSaveMatchClick() {
-    const summary = buildMatchSummary();
 
-    try {
-        await navigator.clipboard.writeText(summary);
-        alert("Kampoppsummering kopiert til utklippstavlen.");
-    } catch (err) {
-        alert("Kunne ikke kopiere. Prøv igjen.");
-        console.error(err);
-        return;
-    }
 
+function onBackClick() {
+
+    const confirmed = confirm(
+        "Vil du avslutte kampen?\n\nAll registrert statistikk vil bli slettet."
+    );
+
+    if (!confirmed) return;
+
+    // ✅ nullstill kamp
+    matchEvents = [];
+    hasStarted = false;
+
+    // stopp klokken
+    stopTicking();
+    clock?.resetGame?.();
+
+    // lagre tom state
     saveToStorage(STORAGE_KEYS.CURRENT_MATCH_EVENTS, []);
     saveToStorage(STORAGE_KEYS.CURRENT_MATCH_META, { hasStarted: false });
 
+    // gå tilbake
     goBack();
 }
+

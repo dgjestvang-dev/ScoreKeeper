@@ -665,6 +665,15 @@ h1  {
 }
 
 
+.actions-row {
+    display: flex;
+    gap: 12px;
+    margin-top: 16px;
+    align-items: center;
+    justify-content: center;
+}
+
+
 
 /* !!!!!!! HER KOMMER CSS-EN FOR LIVE KAMP VISNINGEN !!!!!!! */
 
@@ -696,11 +705,11 @@ h1  {
 
 .scoreboard .score {
     font-size: 2.2rem;
-    font-weight: 400;   /* don't bold digital fonts */
+    font-weight: 400;  
 }
 
 .scoreboard .team {
-font-size: 1.3rem;
+font-size: 1.1rem;
 
 }
 
@@ -1149,3 +1158,322 @@ font-size: 1.3rem;
     padding: 10px 14px;
 }
 
+
+/* STYLING AV KAMPRAPPORT */
+
+.report-view {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.report-summary {
+    display: inline-block;
+    padding: 6px 2px;
+    border: 1px solid gray;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 16px;
+    background: rgba(255, 255, 255, 0.2);
+}
+
+
+/*Scoreboard*/
+
+.report-view .scoreboard {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    
+
+    background: rgba(255,255,255,0.15);
+}
+
+
+.report-view .team {
+    font-size: 16px;
+}
+
+
+.report-view .scoreboard .score {
+    font-size: 40px;
+    font-weight: 600;
+    letter-spacing: 1px;
+}
+
+
+.report-view .halftime {
+    text-align: center;
+    font-size: 0.85em;
+    opacity: 0.6;
+    margin-top: 4px;
+}
+
+.section-title {
+    margin-top: 10px;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.report-events {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-family: monospace;
+}
+
+.report-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.report-actions {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 20px;
+    gap: 10px;
+}
+
+
+.pause-line {
+    text-align: center;
+    margin: 6px 0;
+    font-weight: 600;
+}
+
+
+
+.event-row {
+    display: grid;
+    grid-template-columns: 24px 40px 60px 1fr auto;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 0;
+    font-family: monospace;
+    border-bottom: 1px solid rgba(0,0,0,0.08);
+}
+
+
+.event-row:last-child {
+    border-bottom: none;
+}
+
+
+/* ikon */
+.event-row span:first-child {
+    text-align: center;
+}
+
+/* score */
+.event-row span:nth-child(3) {
+    font-weight: 600;
+}
+
+/* spiller */
+.event-row span:nth-child(4) {
+    font-weight: 500;
+}
+
+/* assist */
+.assist {
+    opacity: 0.7;
+    font-size: 0.9em;
+}
+
+
+/* kort */
+
+.event-row.card span:nth-child(3) {
+    opacity: 0.3; /* tom score-kolonne */
+}
+
+
+
+.event-row.goal {
+    font-weight: 600;
+}
+
+
+.event-row.goal span:nth-child(3) {
+    font-size: 1.05em;
+}
+
+
+.assist {
+    opacity: 0.6;
+    font-size: 0.9em;
+}
+
+.event-icon {
+    width: 20px;
+}
+
+
+.event-row.goal .event-icon {
+    filter: brightness(1.2);
+}
+
+
+.event-row.goal span {
+    line-height: 1.4;
+}
+
+
+
+.event-row.card span:first-child {
+    font-size: 1.1em;
+}
+
+.event-row.card {
+    font-weight: 500;
+}
+
+
+
+
+
+.report-summary:empty {
+    display: none;
+}
+
+/* STATISTIKK DELEN AV KAMPOPPSUMMERINGEN */
+
+
+.stat-row {
+    display: grid;
+    grid-template-columns: 1fr 70px 80px;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 0;
+    font-family: monospace;
+}
+
+
+/* label */
+.stat-label {
+    font-weight: 500;
+}
+
+/* sluttresultat */
+.stat-full {
+    text-align: center;
+    font-weight: 600;
+}
+
+/* HT (mer subtil) */
+.stat-ht {
+    opacity: 0.6;
+    font-size: 0.85em;
+    text-align: right;
+}
+
+
+.stat-row {
+    border-bottom: 1px solid rgba(0,0,0,0.08);
+}
+
+.stat-row:last-child {
+    border-bottom: none;
+}
+
+
+.stat-score {
+    display: inline-block;
+    min-width: 60px;
+    text-align: center;
+}
+
+
+.stat-ht {
+    text-align: right;
+    opacity: 0.5;
+    font-size: 0.8em;
+}
+
+
+.home-leading {
+    color: black;
+    font-weight: 700;
+}
+
+.away-leading {
+    color: #333;
+    font-weight: 700;
+}
+
+
+
+.event-row {
+    transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.event-row:hover {
+    background: rgba(255,255,255,0.15);
+    transform: translateX(4px);
+}
+
+
+.event-row.pause {
+    display: block;
+    text-align: center;
+    justify-content: center;
+    margin: 2px 0;
+    font-style: italic;
+    opacity: 0.7;
+    border-bottom: none;
+}
+
+
+.event-row.pause span {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 6px;
+    background: rgba(255,255,255,0.25);
+    font-style: italic;
+    font-size: 0.9em;
+}
+
+
+
+
+
+
+/* ─────────────────────────────
+   ✅ Knapper i kamp-rapport
+   ───────────────────────────── */
+
+.report-view .actions-row {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+}
+
+/* Sørg for at begge containerne oppfører seg likt */
+.report-view .primary-actions,
+.report-view .secondary-actions {
+    display: flex;
+    flex-direction: row;   /* ❗ viktig */
+    align-items: center;
+    width: auto;           /* ❗ viktig */
+    margin-top: 0;
+    gap: 0;
+}
+
+/* Sørg for at knappene ikke strekkes ulikt */
+.report-view .primary-actions .action-button,
+.report-view .secondary-actions .action-button {
+    width: auto !important;   /* ❗ overstyr width:100% */
+    flex: 0 !important;       /* ❗ overstyr flex:1 */
+    
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    padding: 10px 16px;
+    height: 44px;             /* ✅ lik høyde */
+    line-height: 1;
+}
