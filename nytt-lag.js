@@ -1,4 +1,5 @@
 import { createTeam } from "./teams.js";
+import { navigateToReplacingCurrent } from "./navigation.js";
 
 let teamNameInput;
 let saveTeamBtn;
@@ -31,5 +32,5 @@ function onSaveTeam() {
 
     // Navigasjon tilbake til Mine lag
     // Hvis du bruker data-nav: bare gå tilbake
-    document.querySelector('[data-nav="mine-lag"]')?.click();
+    navigateToReplacingCurrent("mine-lag");
 }

@@ -213,13 +213,15 @@
 
                                 <div class="field">
                                     <label for="hometeam">Hjemmelag</label>
-                                    <select id="home-team" name="home-team"></select>
+                                    <input type="text" id="home-team" list="team-options" autocomplete="off" name="home-team"></select>
                                 </div>
 
                                 <div class="field">
                                     <label for="awayteam">Bortelag</label>
-                                    <select id="away-team" name="away-team"></select>
+                                    <input type="text" id="away-team" list="team-options" autocomplete="off" name="away-team"></select>
                                 </div>
+
+                                <datalist id="team-options"></datalist>
 
                                 <div class="field">
                                     <label for="gametime">Omgangens lengde</label>

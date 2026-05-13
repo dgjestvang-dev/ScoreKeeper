@@ -65,13 +65,15 @@ const STORAGE_KEYS = {
 export function initStartKamp() {
 
         
-    homeTeamId = matchConfig.homeTeamId;
-    awayTeamId = matchConfig.awayTeamId;
+    homeTeamId = matchConfig.homeTeamId ?? null;
+    awayTeamId = matchConfig.awayTeamId ?? null;
 
-    if (!homeTeamId || !awayTeamId) {
-        console.error("Team IDs missing for match");
+    // ✅ Ikke stopp hvis lag mangler ID
+    if (!matchConfig.homeTeamName || !matchConfig.awayTeamName) {
+        console.error("Team names missing");
         return;
     }
+
 
 
     // Safety: clean up if re‑entering the view
@@ -317,115 +319,127 @@ function deriveStats(events) {
     return stats;
 }
 
+function hasRedCard(playerId, team) {
+    return matchEvents.some(e =>
+        e.type === "red_card" &&
+        e.playerId === playerId &&
+        e.team === team
+    );
+}
+
+
+function isMyTeamName(teamName) {
+    const teams = getTeams(); 
+
+    return Object.values(teams).some(t =>
+        t.name.trim().toLowerCase() === teamName.trim().toLowerCase()
+    );
+}
+
+//onStatButtonClick
+//├── handleDecrement
+//├── handleGoal
+//├── handleCard
+//├── handleSimpleStat 
+
+// 1 HOVEDFUKSJON//
+
+
 function onStatButtonClick(event) {
-    // ⛔ Ingen stats hvis kampen ikke går
     if (!clock.isRunning()) return;
 
     const btn = event.target.closest("button[data-stat]");
     if (!btn) return;
 
-    const team = btn.dataset.team;       // "home" | "away"
-    const stat = btn.dataset.stat;       // "goals", "shots_target", ...
-    const action = btn.dataset.action;   // "inc" | "dec"
+    const team = btn.dataset.team;
+    const stat = btn.dataset.stat;
+    const action = btn.dataset.action;
 
     const half = clock.getCurrentHalf();
     const time = clock.getElapsedSeconds();
     const timestamp = Date.now();
 
-    let baseEvent = null; // ← brukes for goals
+    const homeIsMine = isMyTeamName(matchConfig.homeTeamName);
+    const awayIsMine = isMyTeamName(matchConfig.awayTeamName);
 
-    if (action === "inc") {
+    const isMyTeam =
+        (team === "home" && homeIsMine) ||
+        (team === "away" && awayIsMine);
 
-        // ✅ Hoved-event (ALLTID denne som er "brukerhandlingen")
-        baseEvent = {
-            id: generateId(),
-            type: stat,
-            team,
-            teamId: team === "home" ? homeTeamId : awayTeamId,
-            playerId: null,
-            half,
-            time,
-            timestamp
-        };
-
-        matchEvents.push(baseEvent);
-
-        // ✅ Domene-relasjoner
-        if (stat === "goals") {
-            matchEvents.push({
-                id: generateId(),
-                type: "shots_target",
-                team,
-                teamId: baseEvent.teamId,
-                playerId: null,
-                half,
-                time,
-                timestamp
-            });
-
-            matchEvents.push({
-                id: generateId(),
-                type: "shots_total",
-                team,
-                teamId: baseEvent.teamId,
-                playerId: null,
-                half,
-                time,
-                timestamp
-            });
-        }
-
-        if (stat === "shots_target") {
-            matchEvents.push({
-                id: generateId(),
-                type: "shots_total",
-                team,
-                teamId: baseEvent.teamId,
-                playerId: null,
-                half,
-                time,
-                timestamp
-            });
-        }
-
-    } else if (action === "dec") {
-
-        // ❌ Fjerne siste relevante event for dette laget
-        function removeLastEvent(type) {
-            for (let i = matchEvents.length - 1; i >= 0; i--) {
-                const e = matchEvents[i];
-                if (e.type === type && e.team === team) {
-                    matchEvents.splice(i, 1);
-                    return;
-                }
-            }
-        }
-
-        removeLastEvent(stat);
-
-        if (stat === "goals") {
-            removeLastEvent("shots_target");
-            removeLastEvent("shots_total");
-        }
-
-        if (stat === "shots_target") {
-            removeLastEvent("shots_total");
-        }
+    if (action === "dec") {
+        handleDecrement(team, stat);
+        return;
     }
 
-    // 🔄 UI-oppdatering
-    renderScore();
-    renderStatsSummary();
+    if (stat === "goals") {
+        handleGoal(team, isMyTeam, half, time, timestamp);
+        return;
+    }
 
-    // ✅ Spillervalgs-popup KUN for goals (utvidet med assist-flyt)
-    if (stat === "goals" && action === "inc" && baseEvent) {
-    flashGoalScore();
+    if (stat === "yellow_card" || stat === "red_card") {
+        handleCard(team, stat, isMyTeam, half, time, timestamp);
+        return;
+    }
 
-    // ▶️ Opprett pendingGoalEvent HER
+    handleSimpleStat(team, stat, half, time, timestamp);
+}
+
+
+// 2. MÅL //
+
+function handleGoal(team, isMyTeam, half, time, timestamp) {
+    const teamId = team === "home" ? homeTeamId ?? null : awayTeamId ?? null;
+
+    const baseEvent = {
+        id: generateId(),
+        type: "goals",
+        team,
+        teamId,
+        playerId: null,
+        half,
+        time,
+        timestamp
+    };
+
+    matchEvents.push(baseEvent);
+
+matchEvents.push({
+    id: generateId(),
+    type: "shots_target",
+    team,
+    teamId,
+    playerId: null,
+    half,
+    time,
+    timestamp
+});
+
+matchEvents.push({
+    id: generateId(),
+    type: "shots_total",
+    team,
+    teamId,
+    playerId: null,
+    half,
+    time,
+    timestamp
+});
+
+// ✅ 🔥 Oppdater score og flash MED EN GANG
+renderScore();
+flashGoalScore();
+
+
+// motstander → ferdig her
+if (!isMyTeam) {
+    saveAndRender();
+    return;
+}
+
     pendingGoalEvent = {
         baseEvent,
         team,
-        teamId: baseEvent.teamId,
+        teamId,
         scorerId: null,
         assistId: null,
         half,
@@ -433,56 +447,179 @@ function onStatButtonClick(event) {
         timestamp
     };
 
-    const teamPlayers =
-        team === "home"
-            ? getPlayersForTeam(homeTeamId)
-            : getPlayersForTeam(awayTeamId);
+    const players = getPlayersForTeam(teamId) || [];
 
-    
     const playersWithOwnGoal = [
-        {
-            id: "__OWN_GOAL__",
-            name: "Selvmål",
-            shirt: ""
-        },
-        ...teamPlayers
+        { id: "__OWN_GOAL__", name: "Selvmål", shirt: "" },
+        ...players
     ];
 
     openPlayerAssign(
-    playersWithOwnGoal,
-    (playerId) => {
-        if (!playerId) return;
+        playersWithOwnGoal,
+        (playerId) => {
+            if (!playerId) return;
 
-        // ✅ Selvmål valgt
-        if (playerId === "__OWN_GOAL__") {
-            baseEvent.playerId = null;
-            baseEvent.isOwnGoal = true;
+            if (playerId === "__OWN_GOAL__") {
+                baseEvent.playerId = null;
+                baseEvent.isOwnGoal = true;
+                finalizeOwnGoal(baseEvent);
+                return;
+            }
 
-            finalizeOwnGoal(baseEvent);
-            return;
+            pendingGoalEvent.scorerId = playerId;
+            baseEvent.playerId = playerId;
+
+            openAssistAssign(players, playerId);
+        },
+        {
+            title: "Hvem scoret?",
+            skipLabel: "Avbryt"
         }
-
-        // ✅ Vanlig mål
-        pendingGoalEvent.scorerId = playerId;
-        baseEvent.playerId = playerId;
-
-        openAssistAssign(teamPlayers, playerId);
-    },
-    {
-        title: "Hvem scoret?",
-        skipLabel: "Avbryt"
-    }
-);
+    );
 }
 
+// 3. KORT //
+
+function handleCard(team, stat, isMyTeam, half, time, timestamp) {
+    const teamId = team === "home" ? homeTeamId ?? null : awayTeamId ?? null;
+
+    const baseEvent = {
+        id: generateId(),
+        type: stat,
+        team,
+        teamId,
+        playerId: null,
+        half,
+        time,
+        timestamp
+    };
+
+    matchEvents.push(baseEvent);
+
+    if (!isMyTeam) {
+        saveAndRender();
+        return;
+    }
+
+    const teamPlayers =
+        (getPlayersForTeam(teamId) || [])
+        .filter(p => !hasRedCard(p.id, team));
+
+    openPlayerAssign(
+        teamPlayers,
+        (playerId) => {
+            if (!playerId) {
+                matchEvents.pop();
+                return;
+            }
+
+            baseEvent.playerId = playerId;
+
+            if (stat === "yellow_card") {
+                const yellowCount = matchEvents.filter(e =>
+                    e.type === "yellow_card" &&
+                    e.team === team &&
+                    e.playerId === playerId
+                ).length;
+
+                if (yellowCount === 2) {
+                    matchEvents.push({
+                        id: generateId(),
+                        type: "red_card",
+                        team,
+                        teamId,
+                        playerId,
+                        half,
+                        time,
+                        timestamp
+                    });
+                }
+            }
+
+            saveAndRender();
+        },
+        {
+            title: stat === "yellow_card"
+                ? "Hvem fikk gult kort?"
+                : "Hvem fikk rødt kort?",
+            skipLabel: "Avbryt"
+        }
+    );
+}
+
+// 4. SIMLE STATS --> RESTEN (eks corner, skudd)
+
+function handleSimpleStat(team, stat, half, time, timestamp) {
+    const teamId = team === "home" ? homeTeamId ?? null : awayTeamId ?? null;
+
+    const baseEvent = {
+        id: generateId(),
+        type: stat,
+        team,
+        teamId,
+        playerId: null,
+        half,
+        time,
+        timestamp
+    };
+
+    matchEvents.push(baseEvent);
+
+    // shot_target → total
+    if (stat === "shots_target") {
+        matchEvents.push({
+            id: generateId(),
+            type: "shots_total",
+            team,
+            teamId,
+            playerId: null,
+            half,
+            time,
+            timestamp
+        });
+    }
 
     flashStat(stat, team);
+    saveAndRender();
+}
 
-    // ✅ Lagre alltid etter synkrone endringer
+// 5. MINUS KNAPPENE //
+
+function handleDecrement(team, stat) {
+    function removeLast(type) {
+        for (let i = matchEvents.length - 1; i >= 0; i--) {
+            const e = matchEvents[i];
+            if (e.type === type && e.team === team) {
+                matchEvents.splice(i, 1);
+                return;
+            }
+        }
+    }
+
+    removeLast(stat);
+
+    if (stat === "goals") {
+        removeLast("shots_target");
+        removeLast("shots_total");
+    }
+
+    if (stat === "shots_target") {
+        removeLast("shots_total");
+    }
+
+    saveAndRender();
+    renderScore();
+}
+
+// 6. HELPER //
+
+function saveAndRender() {
     saveToStorage(
         STORAGE_KEYS.CURRENT_MATCH_EVENTS,
         matchEvents
     );
+
+    renderStatsSummary();
 }
 
 
@@ -501,10 +638,10 @@ function openAssistAssign(players, scorerId) {
     });
 }
 
+
 function finalizeGoalEvent() {
     const { baseEvent, assistId } = pendingGoalEvent;
 
-    // ✅ Registrer assist som eget event (hvis valgt)
     if (assistId) {
         matchEvents.push({
             id: generateId(),
@@ -518,9 +655,18 @@ function finalizeGoalEvent() {
         });
     }
 
-    
+    saveToStorage(
+        STORAGE_KEYS.CURRENT_MATCH_EVENTS,
+        matchEvents
+    );
+
+    renderScore();
+    renderStatsSummary();
+
+    pendingGoalEvent = null;
+}
+
 function finalizeOwnGoal(baseEvent) {
-    // marker eksplisitt
     baseEvent.isOwnGoal = true;
 
     saveToStorage(
@@ -528,21 +674,12 @@ function finalizeOwnGoal(baseEvent) {
         matchEvents
     );
 
-    renderStatsSummary();
-    pendingGoalEvent = null;
-}
-
-
-    // ✅ Lagre alt ferdig
-    saveToStorage(
-        STORAGE_KEYS.CURRENT_MATCH_EVENTS,
-        matchEvents
-    );
-
+    renderScore();
     renderStatsSummary();
 
     pendingGoalEvent = null;
 }
+
 
 
 // ─────────────────────────────────────────────
@@ -742,6 +879,58 @@ function formatGoalsWithPlayers() {
     return lines.join("\n");
 }
 
+function formatCardsWithPlayers() {
+    const cardEvents = matchEvents
+        .filter(e => e.type === "yellow_card" || e.type === "red_card")
+        .sort((a, b) => {
+            if (a.half !== b.half) return a.half - b.half;
+            return a.time - b.time;
+        });
+
+    if (cardEvents.length === 0) {
+        return "Ingen kort";
+    }
+
+    const lines = [];
+    const usedEventIds = new Set();
+
+    for (const event of cardEvents) {
+        if (usedEventIds.has(event.id)) continue;
+
+        // 🔍 Finn alle kort for samme spiller, lag og tidspunkt
+        const sameMoment = cardEvents.filter(e =>
+            e.team === event.team &&
+            e.playerId === event.playerId &&
+            e.half === event.half &&
+            e.time === event.time
+        );
+
+        // Marker dem som brukt
+        sameMoment.forEach(e => usedEventIds.add(e.id));
+
+        const minute = Math.floor(event.time / 60) + 1 + "'";
+        const yellows = sameMoment.filter(e => e.type === "yellow_card").length;
+        const reds = sameMoment.filter(e => e.type === "red_card").length;
+
+        let symbol = "";
+        if (yellows === 2 && reds === 1) {
+            symbol = "🟨🟨🟥";
+        } else {
+            symbol =
+                "🟨".repeat(yellows) +
+                "🟥".repeat(reds);
+        }
+
+        const playerName = getPlayerName(event.playerId);
+
+        lines.push(`${minute}   ${symbol}   ${playerName}`);
+    }
+
+    return lines.join("\n");
+}
+
+
+
 // ─────────────────────────────────────────────
 // Export / navigation
 // ─────────────────────────────────────────────
@@ -760,6 +949,11 @@ ${home} - ${away}: ${homeFT} – ${awayFT}  (HT: ${homeHT} – ${awayHT})
 
 MÅL
 ${formatGoalsWithPlayers()}
+
+
+KORT
+${formatCardsWithPlayers()}
+
 
 STATISTIKK
 ${formatStatLine("Avslutninger", "shots_total")}
