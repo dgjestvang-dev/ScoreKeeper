@@ -46,6 +46,20 @@ function populateTeamOptions() {
         option.value = team.name; // ✅ viktig
         teamOptions.appendChild(option);
     });
+
+    
+    // ✅ SETT DEFAULT DATO NÅR VIEW ÅPNES
+    setTimeout(() => {
+        const dateInput = document.getElementById("match-date");
+
+        console.log("dateInput found:", dateInput);
+
+        if (dateInput && !dateInput.value) {
+            const today = new Date();
+            dateInput.value = today.toISOString().split("T")[0];
+        }
+    }, 0);
+
 }
 
 

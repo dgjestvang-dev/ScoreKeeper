@@ -65,6 +65,8 @@ const STORAGE_KEYS = {
 
 export function initStartKamp() {
 
+    console.log("initStartKamp CALLED");
+
         
     homeTeamId = matchConfig.homeTeamId ?? null;
     awayTeamId = matchConfig.awayTeamId ?? null;
@@ -112,7 +114,7 @@ export function initStartKamp() {
     timeEl = document.querySelector("#start-kamp .clock .time");
     homeTeamEl = document.querySelector("#start-kamp .team.home");
     awayTeamEl = document.querySelector("#start-kamp .team.away");
-    halfValueEl = document.querySelector("#start-kamp .gamehalf-value");
+    halfValueEl = document.querySelector("#start-kamp .gamehalf-value");  
 
     // Replace buttons to prevent duplicate listeners
     startStopBtn = document.getElementById("start-stop-btn");
@@ -157,10 +159,15 @@ export function initStartKamp() {
     resetMatchBtn.addEventListener("click", onResetMatchClick);
     saveMatchBtn.addEventListener("click", onBackClick);
 
-    // Ensure final button state after DOM settles
-    requestAnimationFrame(() => {
-        updateMatchControls();
-    });
+    
+// Ensure final button state after DOM settles
+requestAnimationFrame(() => {
+    updateMatchControls();
+});
+
+
+
+
 }
 
 

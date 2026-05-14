@@ -318,6 +318,10 @@ h1  {
     display: none;
 }
 
+#motstandere-btn{
+    display: none;
+}
+
 
 #home h1 {
     margin-top: 24px;

@@ -21,12 +21,13 @@ export function initHistorikk() {
             item.classList.add("history-item");
 
             const { header } = match.data;
+            const cleanedHeader = header.replace(/\s*\(HT:.*?\)/, "");
 
             const date = new Date(match.date).toLocaleDateString();
             
             item.innerHTML = `
                 <div class="history-main">
-                    <div class="history-title">${header}</div>
+                    <div class="history-title">${cleanedHeader}</div>
                     <div class="history-date">${date}</div>
                 </div>
 
