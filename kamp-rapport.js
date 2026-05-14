@@ -266,30 +266,72 @@ data.stats.forEach(line => {
 
 
 
-   exportBtn.addEventListener("click", async () => {
+   
+exportBtn.addEventListener("click", async () => {
+
+    const reportEl = document.querySelector(".report-view");
+
+    // ✅ finn actions (knappene nederst)
+    const actions = reportEl.querySelector(".actions-row");
+    const originalDisplay = actions.style.display;
+
+    // ✅ lagre original bakgrunn og padding
+    const originalBackground = reportEl.style.background;
+    const originalPadding = reportEl.style.padding;
+
+    // ✅ skjul knapper
+    actions.style.display = "none";
+
+    // ✅ legg på gradient (samme som app)
+    reportEl.style.background = "linear-gradient(180deg, #FFEADF 0%, #FF9B63 100%)";
+
+    // ✅ litt ekstra luft rundt
+    reportEl.style.padding = "20px";
+
     try {
+        const canvas = await html2canvas(reportEl, {
+            scale: 2
+        });
 
-        // 🔥 bygg pen tekst
-        const reportText = [
-            data.header,
-            "",
-            "KAMPHENDELSER\n-----------",
-            ...data.events,
-            "",
-            ...data.cards,
-            "",
-            "STATISTIKK\n-----------",
-            ...data.stats
-        ].join("\n");
+        const imgData = canvas.toDataURL("image/png");
 
-        await navigator.clipboard.writeText(reportText);
+        // ✅ reset visning
+        actions.style.display = originalDisplay;
+        reportEl.style.background = originalBackground;
+        reportEl.style.padding = originalPadding;
 
-        alert("Kamprapport kopiert 👍");
+        // ✅ DELING (mobil)
+        if (navigator.share) {
+            const blob = await (await fetch(imgData)).blob();
+
+            await navigator.share({
+                files: [
+                    new File([blob], "kamp-rapport.png", {
+                        type: "image/png"
+                    })
+                ]
+            });
+
+            return;
+        }
+
+        // ✅ fallback → download
+        const link = document.createElement("a");
+        link.href = imgData;
+        link.download = "kamp-rapport.png";
+        link.click();
 
     } catch (err) {
         console.error(err);
-        alert("Kunne ikke kopiere");
+        alert("Kunne ikke lage bilde");
+
+        // ✅ reset også ved feil
+        actions.style.display = originalDisplay;
+        reportEl.style.background = originalBackground;
+        reportEl.style.padding = originalPadding;
     }
 });
+
+
 
 }
