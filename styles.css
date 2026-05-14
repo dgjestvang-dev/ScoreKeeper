@@ -1477,3 +1477,44 @@ font-size: 1.1rem;
     height: 44px;             /* ✅ lik høyde */
     line-height: 1;
 }
+
+
+/* HISTORIKK STYLING */
+
+.history-item {
+    padding: 10px;
+    border-bottom: 1px solid rgba(0,0,0,0.1);
+}
+
+.history-title {
+    font-weight: 600;
+}
+
+.history-date {
+    font-size: 0.8em;
+    opacity: 0.6;
+}
+
+.history-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.history-main {
+    display: flex;
+    flex-direction: column;
+}
+
+.delete-btn {
+    background: none;
+    border: none;
+    font-size: 16px;
+    cursor: pointer;
+    opacity: 0.6;
+    color: red;
+}
+
+.delete-btn:hover {
+    opacity: 1;
+}

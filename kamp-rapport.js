@@ -7,7 +7,27 @@ export function initKampRapport() {
     const statsEl = document.getElementById("report-stats");
     const exportBtn = document.getElementById("export-report-btn");
 
-    const data = buildMatchSummaryParts();
+    
+    
+    let data;
+
+    // ✅ sjekk om vi kommer fra historikk
+    const storedMatch = localStorage.getItem("sk_selected_match");
+
+    if (storedMatch) {
+        
+        data = JSON.parse(storedMatch);
+
+        // ✅ fjern etter bruk
+        localStorage.removeItem("sk_selected_match");
+
+    } else {
+        // ✅ fallback → live kamp
+        data = buildMatchSummaryParts();
+    }
+
+
+
 
     // 🔍 parse header
 // "Frisk Asker G13 - teb: 2 – 1  (HT: 1 – 0)"
@@ -46,7 +66,14 @@ homeEl.textContent = homeName;
 
 const scoreEl = document.createElement("span");
 
-const [homeScore, awayScore] = score.split("–").map(s => s.trim());
+
+let homeScore = "";
+let awayScore = "";
+
+if (score.includes("–")) {
+    [homeScore, awayScore] = score.split("–").map(s => s.trim());
+}
+
 
 // bygg struktur
 scoreEl.innerHTML = `

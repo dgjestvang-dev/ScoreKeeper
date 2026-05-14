@@ -114,6 +114,7 @@ import { initNySpiller } from "./ny-spiller.js";
 import { initRedigerSpiller } from "./rediger-spiller.js";
 import { initRedigerLag } from "./rediger-lag.js";
 import { initKampRapport } from "./kamp-rapport.js";
+import { initHistorikk } from "./historikk.js";
 
 function activateView(viewId) {
     const screenBg = document.querySelector(".screen-bg");
@@ -147,7 +148,10 @@ function activateView(viewId) {
     initRedigerLag();
     } else if (viewId === "kamp-rapport") {
     initKampRapport();
+    } else if (viewId === "historikk") {
+    initHistorikk();
     }
+
 
 
 }

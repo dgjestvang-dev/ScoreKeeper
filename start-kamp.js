@@ -993,19 +993,30 @@ function onBackClick() {
 
     if (!confirmed) return;
 
-    // ✅ nullstill kamp
+    // 🔥 ✅ LAG SNAPSHOT FØRST (VIKTIG!)
+    const snapshot = buildMatchSummaryParts();
+
+    const history = loadFromStorage("sk_match_history", []);
+
+    history.push({
+        id: generateId(),
+        date: Date.now(),
+        data: snapshot
+    });
+
+    saveToStorage("sk_match_history", history);
+
+    // ✅ SÅ nullstill kamp
     matchEvents = [];
     hasStarted = false;
 
-    // stopp klokken
     stopTicking();
     clock?.resetGame?.();
 
-    // lagre tom state
     saveToStorage(STORAGE_KEYS.CURRENT_MATCH_EVENTS, []);
     saveToStorage(STORAGE_KEYS.CURRENT_MATCH_META, { hasStarted: false });
 
-    // gå tilbake
+    // ✅ til slutt: naviger
     goBack();
 }
 

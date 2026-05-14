@@ -198,11 +198,11 @@
                                 <span class="label">Motstandere</span>
                             </button>
 
-                            <button data-nav="statistikk" aria-label="Tilbake">
+                            <button data-nav="historikk" aria-label="Historikk">
                                 <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
                                     <use href="#icon-stats"></use>
                                 </svg>
-                                <span class="label">Statistikk</span>
+                                <span class="label">Historikk</span>
                             </button>
                       
                     </div>
@@ -737,8 +737,10 @@
                         </button>
                     </section>
 
-                    <section class="view menu" id="statistikk">
-                        <h1>Statistikk</h1>
+                    <section class="view" id="historikk">
+                        <h2>Historikk</h2>
+
+                        <div id="history-list"></div>
 
                         <!-- back button-->
                         <button data-back class="icon-button icon-only back-button" aria-label="Tilbake">
