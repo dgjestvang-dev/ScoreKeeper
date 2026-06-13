@@ -2,6 +2,8 @@
 // Navigation state
 // ==============================
 
+console.log("🚀 navigation.js STARTING");
+
 const historyStack = [];
 
 
@@ -105,16 +107,18 @@ export function goBack() {
 // View activation
 // ==============================
 
-import { initKampdag } from "./kampdag.js";
-import { initStartKamp } from "./start-kamp.js";
-import { initMineLag } from "./mine-lag.js";
-import { initNyttLag } from "./nytt-lag.js";
-import { initLagDetaljer } from "./lagdetaljer.js";
-import { initNySpiller } from "./ny-spiller.js";
-import { initRedigerSpiller } from "./rediger-spiller.js";
-import { initRedigerLag } from "./rediger-lag.js";
-import { initKampRapport } from "./kamp-rapport.js";
-import { initHistorikk } from "./historikk.js";
+import { initKampdag } from "./pages/match/kampdag.js";
+import { initStartKamp } from "./pages/match/start-kamp.js";
+import { initMineLag } from "./pages/teams/mine-lag.js";
+import { initNyttLag } from "./pages/teams/nytt-lag.js";
+import { initLagDetaljer } from "./pages/teams/lagdetaljer.js";
+import { initNySpiller } from "./pages/players/ny-spiller.js";
+import { initRedigerSpiller } from "./pages/players/rediger-spiller.js";
+import { initRedigerLag } from "./pages/teams/rediger-lag.js";
+import { initKampRapport } from "./pages/match/kamp-rapport.js";
+import { initHistorikk } from "./pages/historikk.js";
+
+console.log("✅ navigation.js - alle imports lastet!");
 
 function activateView(viewId) {
     const screenBg = document.querySelector(".screen-bg");

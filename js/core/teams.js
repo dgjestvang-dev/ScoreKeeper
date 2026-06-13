@@ -1,5 +1,5 @@
-import { loadFromStorage, saveToStorage } from "./storage.js";
-import { generateId } from "./utils.js";
+import { loadFromStorage, saveToStorage } from "../storage.js";
+import { generateId } from "../utils.js";
 
 const STORAGE_KEY = "sk_teams";
 
@@ -81,4 +81,3 @@ export function deleteTeam(teamId) {
     delete teams[teamId];
     persist();
 }
-

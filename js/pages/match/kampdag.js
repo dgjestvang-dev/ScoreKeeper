@@ -1,6 +1,6 @@
 
-import { getTeams } from "./teams.js";
-import { matchConfig } from "./match-config.js";
+import { getTeams } from "../../core/teams.js";
+import { matchConfig } from "../../config/match-config.js";
 
 
 let startMatchBtn;
@@ -116,4 +116,5 @@ function onStartMatchClick() {
 
     
 }
+
 

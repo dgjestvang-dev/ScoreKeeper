@@ -1,5 +1,5 @@
-import { loadFromStorage, saveToStorage } from "./storage.js";
-import { navigateTo } from "./navigation.js";
+import { loadFromStorage, saveToStorage } from "../storage.js";
+import { navigateTo } from "../navigation.js";
 
 export function initHistorikk() {
     const listEl = document.getElementById("history-list");
@@ -71,3 +71,4 @@ export function initHistorikk() {
             listEl.appendChild(item);
         });
 }
+

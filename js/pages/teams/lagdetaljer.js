@@ -1,6 +1,6 @@
-import { getTeam, getPlayersForTeam } from "./teams.js";
-import { getSelectedTeam } from "./team-selection.js";
-import { setSelectedPlayer } from "./player-selection.js";
+import { getTeam, getPlayersForTeam } from "../../core/teams.js";
+import { getSelectedTeam } from "../../components/team-selection.js";
+import { setSelectedPlayer } from "../../components/player-selection.js";
 
 let teamNameHeading;
 let playerListEl;

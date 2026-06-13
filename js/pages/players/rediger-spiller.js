@@ -1,8 +1,8 @@
-import { getSelectedTeam } from "./team-selection.js";
-import { getSelectedPlayer } from "./player-selection.js";
-import { getTeam } from "./teams.js";
-import { navigateToReplacingCurrent } from "./navigation.js";
-import { deletePlayer } from "./teams.js";
+import { getSelectedTeam } from "../../components/team-selection.js";
+import { getSelectedPlayer } from "../../components/player-selection.js";
+import { getTeam } from "../../core/teams.js";
+import { navigateToReplacingCurrent } from "../../navigation.js";
+import { deletePlayer } from "../../core/teams.js";
 
 let nameInput;
 let shirtInput;

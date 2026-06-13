@@ -1,6 +1,6 @@
-import { addPlayer } from "./teams.js";
-import { getSelectedTeam } from "./team-selection.js";
-import { navigateToReplacingCurrent } from "./navigation.js";
+import { addPlayer } from "../../core/teams.js";
+import { getSelectedTeam } from "../../components/team-selection.js";
+import { navigateToReplacingCurrent } from "../../navigation.js";
 
 let nameInput;
 let shirtInput;
@@ -47,6 +47,6 @@ function onSavePlayer() {
     nameInput.value = "";
     shirtInput.value = "";
 
-    // ✅ 3. NAVIGER “DONE” (IKKE push til historikk)
+    // ✅ 3. NAVIGER "DONE" (IKKE push til historikk)
     navigateToReplacingCurrent("lag-detaljer");
 }

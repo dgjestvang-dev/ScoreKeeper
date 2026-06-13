@@ -1,6 +1,6 @@
-import { getSelectedTeam, clearSelectedTeam } from "./team-selection.js";
-import { getTeam, deleteTeam, updateTeamName } from "./teams.js";
-import { navigateToReplacingCurrent } from "./navigation.js";
+import { getSelectedTeam, clearSelectedTeam } from "../../components/team-selection.js";
+import { getTeam, deleteTeam, updateTeamName } from "../../core/teams.js";
+import { navigateToReplacingCurrent } from "../../navigation.js";
 
 let nameInput;
 let saveBtn;

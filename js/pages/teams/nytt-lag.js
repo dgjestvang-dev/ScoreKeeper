@@ -1,5 +1,5 @@
-import { createTeam } from "./teams.js";
-import { navigateToReplacingCurrent } from "./navigation.js";
+import { createTeam } from "../../core/teams.js";
+import { navigateToReplacingCurrent } from "../../navigation.js";
 
 let teamNameInput;
 let saveTeamBtn;

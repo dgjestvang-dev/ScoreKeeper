@@ -2,14 +2,14 @@
 // Imports
 // ─────────────────────────────────────────────
 
-import { createClock } from "./clock.js";
-import { matchConfig } from "./match-config.js";
-import { goBack, navigateTo } from "./navigation.js";
-import { generateId } from "./utils.js";
+import { createClock } from "../../core/clock.js";
+import { matchConfig } from "../../config/match-config.js";
+import { goBack, navigateTo } from "../../navigation.js";
+import { generateId } from "../../utils.js";
 
-import { loadFromStorage, saveToStorage } from "./storage.js";
-import { getTeams, getPlayersForTeam } from "./teams.js";
-import { openPlayerAssign } from "./player-assign-ui.js";
+import { loadFromStorage, saveToStorage } from "../../storage.js";
+import { getTeams, getPlayersForTeam } from "../../core/teams.js";
+import { openPlayerAssign } from "../../components/player-assign-ui.js";
 
 
 
@@ -1026,4 +1026,5 @@ function onBackClick() {
     // ✅ til slutt: naviger
     goBack();
 }
+
 

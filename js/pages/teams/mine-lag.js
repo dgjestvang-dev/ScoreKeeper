@@ -1,5 +1,5 @@
-import { getTeams } from "./teams.js";
-import { setSelectedTeam } from "./team-selection.js";
+import { getTeams } from "../../core/teams.js";
+import { setSelectedTeam } from "../../components/team-selection.js";
 
 let teamListEl;
 let createTeamBtn;
@@ -47,4 +47,3 @@ function renderTeamList() {
         teamListEl.appendChild(li);
     });
 }
-``
