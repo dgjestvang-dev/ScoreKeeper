@@ -1,6 +1,6 @@
 import { getSelectedTeam } from "../../components/team-selection.js";
 import { getSelectedPlayer } from "../../components/player-selection.js";
-import { getTeam } from "../../core/teams.js";
+import { getTeam, updatePlayer } from "../../core/teams.js";
 import { navigateToReplacingCurrent } from "../../navigation.js";
 import { deletePlayer } from "../../core/teams.js";
 
@@ -23,38 +23,42 @@ export function initRedigerSpiller() {
     }
 
     const team = getTeam(teamId);
-    const player = team.players.find(p => p.id === playerId);
+    const player = team?.players?.find(p => p.id === playerId);
 
     if (!player) return;
 
-    // ✅ Fyll eksisterende data
     nameInput.value = player.name;
     shirtInput.value = player.shirt;
 
-    saveBtn.onclick = () => {
+    saveBtn.onclick = async () => {
         const newName = nameInput.value.trim();
         const newShirt = Number(shirtInput.value);
 
         if (!newName || !newShirt) return;
 
-        // ✅ Oppdater spiller direkte
-        player.name = newName;
-        player.shirt = newShirt;
+        try {
+            await updatePlayer(teamId, playerId, {
+                name: newName,
+                shirt_number: newShirt
+            });
 
-        // ✅ Viktig: persister lag
-        localStorage.setItem("sk_teams", JSON.stringify(getTeamStorageDump()));
-
-        navigateToReplacingCurrent("lag-detaljer");
+            navigateToReplacingCurrent("lag-detaljer");
+        } catch (err) {
+            console.error("Failed to update player", err);
+            alert("Kunne ikke lagre spilleren");
+        }
     };
 
-    
-    deleteBtn.onclick = () => {
+    deleteBtn.onclick = async () => {
         const confirmed = confirm("Er du sikker på at du vil slette spilleren?");
         if (!confirmed) return;
 
-        deletePlayer(teamId, playerId);
-
-        navigateToReplacingCurrent("lag-detaljer");
+        try {
+            await deletePlayer(teamId, playerId);
+            navigateToReplacingCurrent("lag-detaljer");
+        } catch (err) {
+            console.error("Failed to delete player", err);
+            alert("Kunne ikke slette spilleren");
+        }
     };
-
 }

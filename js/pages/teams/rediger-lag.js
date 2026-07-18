@@ -21,26 +21,28 @@ export function initRedigerLag() {
         return;
     }
 
-    // ✅ Forhåndsfyll eksisterende navn
     nameInput.value = team.name;
 
-    saveBtn.onclick = () => {
+    saveBtn.onclick = async () => {
         const newName = nameInput.value.trim();
         if (!newName) {
             alert("Lagnavn kan ikke være tomt");
             return;
         }
 
-        updateTeamName(teamId, newName);
-
-        navigateToReplacingCurrent("mine-lag");
+        try {
+            await updateTeamName(teamId, newName);
+            navigateToReplacingCurrent("mine-lag");
+        } catch (err) {
+            console.error("Failed to update team", err);
+            alert("Kunne ikke lagre laget");
+        }
     };
 
-    
     const deleteBtn = document.getElementById("delete-team-btn");
 
     if (deleteBtn) {
-        deleteBtn.onclick = () => {
+        deleteBtn.onclick = async () => {
             const team = getTeam(teamId);
             if (!team) return;
 
@@ -52,11 +54,14 @@ export function initRedigerLag() {
             const confirmed = confirm(message);
             if (!confirmed) return;
 
-            deleteTeam(teamId);
-            clearSelectedTeam();
-
-            navigateToReplacingCurrent("mine-lag");
+            try {
+                await deleteTeam(teamId);
+                clearSelectedTeam();
+                navigateToReplacingCurrent("mine-lag");
+            } catch (err) {
+                console.error("Failed to delete team", err);
+                alert("Kunne ikke slette laget");
+            }
         };
     }
-
 }

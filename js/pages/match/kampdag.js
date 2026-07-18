@@ -1,19 +1,12 @@
-
-import { getTeams } from "../../core/teams.js";
+import { getTeams, rehydrateTeamsFromBackend } from "../../core/teams.js";
 import { matchConfig } from "../../config/match-config.js";
-
 
 let startMatchBtn;
 let gametimeInput;
-
 let homeInput;
 let awayInput;
 
-
-
-
-
-export function initKampdag() {
+export async function initKampdag() {
     startMatchBtn = document.querySelector('#kampdag [data-nav="start-kamp"]');
     gametimeInput = document.getElementById("gametime");
     homeInput = document.getElementById("home-team");
@@ -24,12 +17,11 @@ export function initKampdag() {
         return;
     }
 
-    populateTeamOptions(); // ← DENNE ER KRITISK
-
+    await populateTeamOptions();
     startMatchBtn.addEventListener("click", onStartMatchClick);
 }
 
-function populateTeamOptions() {
+async function populateTeamOptions() {
     const teamOptions = document.getElementById("team-options");
 
     if (!teamOptions) {
@@ -38,31 +30,23 @@ function populateTeamOptions() {
     }
 
     teamOptions.innerHTML = "";
+    await rehydrateTeamsFromBackend();
 
     const teams = getTeams();
-
     Object.values(teams).forEach(team => {
         const option = document.createElement("option");
-        option.value = team.name; // ✅ viktig
+        option.value = team.name;
         teamOptions.appendChild(option);
     });
 
-    
-    // ✅ SETT DEFAULT DATO NÅR VIEW ÅPNES
     setTimeout(() => {
         const dateInput = document.getElementById("match-date");
-
-        console.log("dateInput found:", dateInput);
-
         if (dateInput && !dateInput.value) {
             const today = new Date();
             dateInput.value = today.toISOString().split("T")[0];
         }
     }, 0);
-
 }
-
-
 
 function onStartMatchClick() {
     const minutes = Number(gametimeInput.value);
@@ -75,8 +59,8 @@ function onStartMatchClick() {
     }
 
     if (!homeTeamName) {
-    alert("Skriv inn hjemmelag");
-    return;
+        alert("Skriv inn hjemmelag");
+        return;
     }
 
     if (!awayTeamName) {
@@ -89,32 +73,18 @@ function onStartMatchClick() {
         return;
     }
 
-
     matchConfig.gametimeMinutes = minutes;
-
-    // ✅ Navn lagres direkte
     matchConfig.homeTeamName = homeTeamName;
     matchConfig.awayTeamName = awayTeamName;
 
-    // ✅ ID kun hvis laget finnes (ellers null)
     const teams = getTeams();
-
     const homeMatch = Object.values(teams).find(t =>
         t.name.toLowerCase() === homeTeamName.toLowerCase()
     );
-
     const awayMatch = Object.values(teams).find(t =>
         t.name.toLowerCase() === awayTeamName.toLowerCase()
     );
 
     matchConfig.homeTeamId = homeMatch ? homeMatch.id : null;
     matchConfig.awayTeamId = awayMatch ? awayMatch.id : null;
-
-
-    // ✅ DEBUG – behold til alt er verifisert
-    console.log("Starter kamp med:", matchConfig);
-
-    
 }
-
-

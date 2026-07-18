@@ -1,20 +1,20 @@
-import { getTeams } from "../../core/teams.js";
+import { getTeams, rehydrateTeamsFromBackend } from "../../core/teams.js";
 import { setSelectedTeam } from "../../components/team-selection.js";
 
 let teamListEl;
 let createTeamBtn;
 
-export function initMineLag() {
+export async function initMineLag() {
     teamListEl = document.getElementById("team-list");
     createTeamBtn = document.getElementById("create-team-btn");
 
     if (!teamListEl || !createTeamBtn) {
-        console.error("Mine lag: DOM‑elementer ikke funnet");
+        console.error("Mine lag: DOM-elementer ikke funnet");
         return;
     }
 
+    await rehydrateTeamsFromBackend();
     renderTeamList();
-
 }
 
 function renderTeamList() {
@@ -36,13 +36,11 @@ function renderTeamList() {
         li.className = "team-item";
         li.textContent = team.name;
 
-    li.dataset.nav = "lag-detaljer";    
-    
-    li.addEventListener("click", () => {
-        setSelectedTeam(team.id);
-    });
+        li.dataset.nav = "lag-detaljer";
 
-
+        li.addEventListener("click", () => {
+            setSelectedTeam(team.id);
+        });
 
         teamListEl.appendChild(li);
     });

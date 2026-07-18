@@ -2,7 +2,7 @@
 // Navigation state
 // ==============================
 
-console.log("🚀 navigation.js STARTING");
+console.log("navigation.js STARTING");
 
 const historyStack = [];
 
@@ -12,15 +12,12 @@ const historyStack = [];
 // ==============================
 
 document.addEventListener("click", (event) => {
-
-    // Forward navigation (data-nav)
     const navTarget = event.target.closest("[data-nav]");
     if (navTarget) {
         navigateTo(navTarget.dataset.nav);
         return;
     }
 
-    // Back navigation (data-back)
     const backTarget = event.target.closest("[data-back]");
     if (backTarget) {
         goBack();
@@ -52,7 +49,7 @@ export function navigateTo(id) {
 
 
 // ==============================
-// Replace navigation (DONE)
+// Replace navigation
 // ==============================
 
 export function navigateToReplacingCurrent(id) {
@@ -61,7 +58,6 @@ export function navigateToReplacingCurrent(id) {
 
     if (!next || next === current) return;
 
-    // ✅ Replace = fjern siste historikk‑entry
     if (historyStack.length > 0) {
         historyStack.pop();
     }
@@ -118,12 +114,9 @@ import { initRedigerLag } from "./pages/teams/rediger-lag.js";
 import { initKampRapport } from "./pages/match/kamp-rapport.js";
 import { initHistorikk } from "./pages/historikk.js";
 
-console.log("✅ navigation.js - alle imports lastet!");
-
 function activateView(viewId) {
     const screenBg = document.querySelector(".screen-bg");
 
-    // Reset background
     screenBg.classList.remove("bg-home", "bg-app");
 
     const homeLikeViews = ["home", "main_menu"];
@@ -147,17 +140,14 @@ function activateView(viewId) {
     } else if (viewId === "ny-spiller") {
         initNySpiller();
     } else if (viewId === "rediger-spiller") {
-    initRedigerSpiller();
+        initRedigerSpiller();
     } else if (viewId === "rediger-lag") {
-    initRedigerLag();
+        initRedigerLag();
     } else if (viewId === "kamp-rapport") {
-    initKampRapport();
+        initKampRapport();
     } else if (viewId === "historikk") {
-    initHistorikk();
+        initHistorikk();
     }
-
-
-
 }
 
 

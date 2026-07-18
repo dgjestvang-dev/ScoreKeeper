@@ -7,7 +7,6 @@ import { matchConfig } from "../../config/match-config.js";
 import { goBack, navigateTo } from "../../navigation.js";
 import { generateId } from "../../utils.js";
 
-import { loadFromStorage, saveToStorage } from "../../storage.js";
 import { getTeams, getPlayersForTeam } from "../../core/teams.js";
 import { openPlayerAssign } from "../../components/player-assign-ui.js";
 
@@ -49,15 +48,6 @@ let pendingGoalEvent = null;
 let homeTeamId = null;
 let awayTeamId = null;
 
-
-// ─────────────────────────────────────────────
-// CREATE LOCAL STORAGE
-// ─────────────────────────────────────────────
-
-const STORAGE_KEYS = {
-    CURRENT_MATCH_EVENTS: "sk_current_match_events",
-    CURRENT_MATCH_META: "sk_current_match_meta"
-};
 
 // ─────────────────────────────────────────────
 // Initialization / view entry point
@@ -134,16 +124,9 @@ export function initStartKamp() {
     saveMatchBtn = document.getElementById("save-match-btn");
 
     
-    // Restore persisted match state (if any)
-    matchEvents = loadFromStorage(
-        STORAGE_KEYS.CURRENT_MATCH_EVENTS,
-        []
-    );
-
-    hasStarted = loadFromStorage(
-        STORAGE_KEYS.CURRENT_MATCH_META,
-        { hasStarted: false }
-    ).hasStarted;
+    // Backend is the only persistence layer; active match state stays in memory.
+    matchEvents = [];
+    hasStarted = false;
 
 
     // Initial render
@@ -198,8 +181,6 @@ function onStartStopClick() {
         startTicking();
     }
     
-    saveToStorage(STORAGE_KEYS.CURRENT_MATCH_META, { hasStarted });
-
     updateMatchControls();
 }
 
@@ -629,11 +610,6 @@ function handleDecrement(team, stat) {
 // 6. HELPER //
 
 function saveAndRender() {
-    saveToStorage(
-        STORAGE_KEYS.CURRENT_MATCH_EVENTS,
-        matchEvents
-    );
-
     renderStatsSummary();
 }
 
@@ -670,11 +646,6 @@ function finalizeGoalEvent() {
         });
     }
 
-    saveToStorage(
-        STORAGE_KEYS.CURRENT_MATCH_EVENTS,
-        matchEvents
-    );
-
     renderScore();
     renderStatsSummary();
 
@@ -683,11 +654,6 @@ function finalizeGoalEvent() {
 
 function finalizeOwnGoal(baseEvent) {
     baseEvent.isOwnGoal = true;
-
-    saveToStorage(
-        STORAGE_KEYS.CURRENT_MATCH_EVENTS,
-        matchEvents
-    );
 
     renderScore();
     renderStatsSummary();
@@ -785,9 +751,6 @@ function onResetMatchClick() {
     renderStatsSummary();
     updateMatchControls();
     
-    saveToStorage(STORAGE_KEYS.CURRENT_MATCH_EVENTS, []);
-    saveToStorage(STORAGE_KEYS.CURRENT_MATCH_META, { hasStarted: false });
-
 }
 
 function updateStatControls() {
@@ -991,37 +954,100 @@ export function buildMatchSummaryParts() {
 }
 
 
+function toBackendMinute(eventTimeSeconds) {
+    const seconds = Number(eventTimeSeconds);
+    if (!Number.isFinite(seconds) || seconds < 0) return 1;
+    return Math.floor(seconds / 60) + 1;
+}
 
-function onBackClick() {
+function mapEventForBackend(event) {
+    return {
+        type: event.type,
+        team: event.team,
+        player_id: event.playerId ?? null,
+        half: event.half ?? null,
+        minute: toBackendMinute(event.time),
+        timestamp: Number.isFinite(Number(event.timestamp))
+            ? Number(event.timestamp)
+            : Date.now()
+    };
+}
+
+function buildSaveMatchPayload() {
+    const today = new Date().toISOString().split("T")[0];
+
+    return {
+        match: {
+            home_team_id: homeTeamId,
+            home_team_name: matchConfig.homeTeamName,
+            away_team_id: awayTeamId,
+            away_team_name: matchConfig.awayTeamName,
+            date: today
+        },
+        events: matchEvents.map(mapEventForBackend)
+    };
+}
+
+
+async function onBackClick() {
 
     const confirmed = confirm(
-        "Vil du avslutte kampen?\n\nAll registrert statistikk vil bli slettet."
+        "Vil du lagre og avslutte kampen?\n\nKampdata lagres til backend før kampen lukkes."
     );
 
     if (!confirmed) return;
 
+    const payload = buildSaveMatchPayload();
+
+    let savedBackendMatchId = null;
+
+    try {
+        const response = await fetch("http://localhost:5000/save-match", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+            let backendError = "Unknown backend error";
+            try {
+                const errorBody = await response.json();
+                backendError = errorBody.error || JSON.stringify(errorBody);
+            } catch {
+                backendError = await response.text();
+            }
+
+            throw new Error(`Save failed (${response.status}): ${backendError}`);
+        }
+
+        const saveResult = await response.json();
+        savedBackendMatchId = saveResult?.match_id ?? null;
+    } catch (error) {
+        console.error("Failed to save match to backend", error);
+
+        const message = String(error?.message || "");
+        const isNetworkError =
+            message.includes("Failed to fetch") ||
+            message.includes("NetworkError") ||
+            message.includes("Load failed");
+
+        if (isNetworkError) {
+            alert("Kunne ikke koble til backend på http://localhost:5000. Sjekk at backend kjører, og prøv igjen.\n\nKampen er fortsatt aktiv.");
+        } else {
+            alert(`Kunne ikke lagre kampen til backend.\n\n${message}\n\nKampen er fortsatt aktiv, prøv igjen.`);
+        }
+        return;
+    }
+
     // 🔥 ✅ LAG SNAPSHOT FØRST (VIKTIG!)
-    const snapshot = buildMatchSummaryParts();
-
-    const history = loadFromStorage("sk_match_history", []);
-
-    history.push({
-        id: generateId(),
-        date: Date.now(),
-        data: snapshot
-    });
-
-    saveToStorage("sk_match_history", history);
-
     // ✅ SÅ nullstill kamp
     matchEvents = [];
     hasStarted = false;
 
     stopTicking();
     clock?.resetGame?.();
-
-    saveToStorage(STORAGE_KEYS.CURRENT_MATCH_EVENTS, []);
-    saveToStorage(STORAGE_KEYS.CURRENT_MATCH_META, { hasStarted: false });
 
     // ✅ til slutt: naviger
     goBack();

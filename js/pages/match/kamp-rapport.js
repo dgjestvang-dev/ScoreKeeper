@@ -1,6 +1,149 @@
 import { buildMatchSummaryParts } from "./start-kamp.js";
 
-export function initKampRapport() {
+function toPlayerLabel(playerId, playersById) {
+    if (!playerId) return "(Ukjent spiller)";
+
+    const player = playersById.get(Number(playerId)) || playersById.get(playerId);
+    if (!player) return "(Ikke angitt spiller)";
+
+    return `#${player.shirt_number ?? "?"} ${player.name}`;
+}
+
+function count(events, type, team, half = null) {
+    return events.filter(e =>
+        e.type === type &&
+        e.team === team &&
+        (half === null || e.half === half)
+    ).length;
+}
+
+function formatStatLine(events, label, type) {
+    const homeFull = count(events, type, "home");
+    const awayFull = count(events, type, "away");
+    const homeHT = count(events, type, "home", 1);
+    const awayHT = count(events, type, "away", 1);
+    return `${label}: ${homeFull} – ${awayFull} (HT: ${homeHT} – ${awayHT})`;
+}
+
+function formatGoals(events, playersById) {
+    const goals = events
+        .filter(e => e.type === "goals")
+        .sort((a, b) => {
+            if ((a.half ?? 0) !== (b.half ?? 0)) return (a.half ?? 0) - (b.half ?? 0);
+            if ((a.minute ?? 0) !== (b.minute ?? 0)) return (a.minute ?? 0) - (b.minute ?? 0);
+            return (a.timestamp ?? 0) - (b.timestamp ?? 0);
+        });
+
+    if (goals.length === 0) return ["Ingen mål"];
+
+    let homeGoals = 0;
+    let awayGoals = 0;
+    let currentHalf = goals[0].half;
+    const lines = [];
+
+    for (const goal of goals) {
+        if (goal.half !== currentHalf) {
+            lines.push("-------- Pause --------");
+            currentHalf = goal.half;
+        }
+
+        if (goal.team === "home") {
+            homeGoals++;
+        } else {
+            awayGoals++;
+        }
+
+        const assist = events.find(e =>
+            e.type === "assists" &&
+            e.team === goal.team &&
+            e.half === goal.half &&
+            e.minute === goal.minute &&
+            e.timestamp === goal.timestamp
+        );
+
+        const minuteText = `${goal.minute}'`;
+        const scoreText = `${homeGoals}–${awayGoals}`;
+        const playerText = toPlayerLabel(goal.player_id, playersById);
+        const assistText = assist ? ` (${toPlayerLabel(assist.player_id, playersById)})` : "";
+
+        lines.push(`${minuteText}   ${scoreText}   ${playerText}${assistText}`);
+    }
+
+    return lines;
+}
+
+function formatCards(events, playersById) {
+    const cards = events
+        .filter(e => e.type === "yellow_card" || e.type === "red_card")
+        .sort((a, b) => {
+            if ((a.half ?? 0) !== (b.half ?? 0)) return (a.half ?? 0) - (b.half ?? 0);
+            if ((a.minute ?? 0) !== (b.minute ?? 0)) return (a.minute ?? 0) - (b.minute ?? 0);
+            return (a.timestamp ?? 0) - (b.timestamp ?? 0);
+        });
+
+    if (cards.length === 0) return ["Ingen kort"];
+
+    return cards.map(card => {
+        const symbol = card.type === "red_card" ? "🟥" : "🟨";
+        return `${card.minute}'   ${symbol}   ${toPlayerLabel(card.player_id, playersById)}`;
+    });
+}
+
+function buildSnapshotFromBackend(match, events, playersById) {
+    const homeFT = count(events, "goals", "home");
+    const awayFT = count(events, "goals", "away");
+    const homeHT = count(events, "goals", "home", 1);
+    const awayHT = count(events, "goals", "away", 1);
+
+    return {
+        header: `${match.home_team_name} - ${match.away_team_name}: ${homeFT} – ${awayFT}  (HT: ${homeHT} – ${awayHT})`,
+        events: formatGoals(events, playersById),
+        cards: formatCards(events, playersById),
+        stats: [
+            formatStatLine(events, "Avslutninger", "shots_total"),
+            formatStatLine(events, "Skudd på mål", "shots_target"),
+            formatStatLine(events, "Corner", "corners"),
+            formatStatLine(events, "Offside", "offside"),
+            formatStatLine(events, "Gult kort", "yellow_card"),
+            formatStatLine(events, "Rødt kort", "red_card")
+        ]
+    };
+}
+
+async function loadSelectedMatchFromBackend(matchId) {
+    const [matchesRes, eventsRes, playersRes] = await Promise.all([
+        fetch("http://localhost:5000/matches"),
+        fetch("http://localhost:5000/events"),
+        fetch("http://localhost:5000/players")
+    ]);
+
+    if (!matchesRes.ok || !eventsRes.ok) {
+        throw new Error("Kunne ikke hente kamp fra backend");
+    }
+
+    const matches = await matchesRes.json();
+    const events = await eventsRes.json();
+    let players = [];
+    try {
+        if (playersRes.ok) {
+            players = await playersRes.json();
+        }
+    } catch {
+        players = [];
+    }
+
+    const match = matches.find(m => Number(m.id) === Number(matchId));
+    if (!match) {
+        throw new Error("Fant ikke valgt kamp i backend");
+    }
+
+    const eventsForMatch = events.filter(e => Number(e.match_id) === Number(match.id));
+    const playersById = new Map(players.map(p => [Number(p.id), p]));
+
+    return buildSnapshotFromBackend(match, eventsForMatch, playersById);
+}
+
+export async function initKampRapport() {
 
     const summaryEl = document.getElementById("report-summary");
     const eventsEl = document.getElementById("report-events");
@@ -11,18 +154,22 @@ export function initKampRapport() {
     
     let data;
 
-    // ✅ sjekk om vi kommer fra historikk
-    const storedMatch = localStorage.getItem("sk_selected_match");
+    const selectedMatchId = window.__selectedMatchId;
+    const selectedMatchData = window.__selectedMatchData;
 
-    if (storedMatch) {
-        
-        data = JSON.parse(storedMatch);
+    if (selectedMatchId) {
+        try {
+            data = await loadSelectedMatchFromBackend(selectedMatchId);
+        } catch (error) {
+            console.error("Klarte ikke å laste kamp fra backend", error);
+        }
+    }
 
-        // ✅ fjern etter bruk
-        localStorage.removeItem("sk_selected_match");
+    if (!data && selectedMatchData) {
+        data = selectedMatchData;
+    }
 
-    } else {
-        // ✅ fallback → live kamp
+    if (!data) {
         data = buildMatchSummaryParts();
     }
 

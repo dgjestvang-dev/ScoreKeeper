@@ -9,14 +9,17 @@ export function initNyttLag() {
     saveTeamBtn = document.getElementById("save-team-btn");
 
     if (!teamNameInput || !saveTeamBtn) {
-        console.error("Nytt lag: DOM‑elementer ikke funnet");
+        console.error("Nytt lag: DOM-elementer ikke funnet");
         return;
     }
 
-    saveTeamBtn.addEventListener("click", onSaveTeam);
+    saveTeamBtn.onclick = (event) => {
+        event.preventDefault();
+        onSaveTeam();
+    };
 }
 
-function onSaveTeam() {
+async function onSaveTeam() {
     const name = teamNameInput.value.trim();
 
     if (!name) {
@@ -24,13 +27,11 @@ function onSaveTeam() {
         return;
     }
 
-    createTeam(name);
+    await createTeam(name);
 
     console.log("Lag opprettet:", name);
 
     teamNameInput.value = "";
 
-    // Navigasjon tilbake til Mine lag
-    // Hvis du bruker data-nav: bare gå tilbake
     navigateToReplacingCurrent("mine-lag");
 }

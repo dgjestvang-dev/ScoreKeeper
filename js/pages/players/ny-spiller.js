@@ -2,6 +2,9 @@ import { addPlayer } from "../../core/teams.js";
 import { getSelectedTeam } from "../../components/team-selection.js";
 import { navigateToReplacingCurrent } from "../../navigation.js";
 
+import { navigateTo } from "../../navigation.js";
+
+
 let nameInput;
 let shirtInput;
 let saveBtn;
@@ -17,10 +20,16 @@ export function initNySpiller() {
     }
 
     // Viktig: fjern gamle lyttere hvis view besøkes flere ganger
-    saveBtn.onclick = onSavePlayer;
+    
+    saveBtn.onclick = async (event) => {
+        event.preventDefault();
+        await onSavePlayer();
+    };
+
 }
 
-function onSavePlayer() {
+async function onSavePlayer() {
+    
     const teamId = getSelectedTeam();
     if (!teamId) {
         alert("Ingen lag valgt");
@@ -41,12 +50,12 @@ function onSavePlayer() {
     }
 
     // ✅ 1. LAGRE DATA
-    addPlayer(teamId, { name, shirt });
+    await addPlayer(teamId, { name, shirt });
 
     // ✅ 2. RYDD INPUT
     nameInput.value = "";
     shirtInput.value = "";
-
+    
     // ✅ 3. NAVIGER "DONE" (IKKE push til historikk)
     navigateToReplacingCurrent("lag-detaljer");
 }
