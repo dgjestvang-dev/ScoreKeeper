@@ -1,4 +1,5 @@
 import { navigateTo } from "../navigation.js";
+import { apiUrl } from "../config/api.js";
 
 function toPlayerLabel(playerId, playersById) {
     if (!playerId) return "(Ukjent spiller)";
@@ -113,9 +114,9 @@ function buildSnapshotFromBackend(match, allEventsForMatch, playersById) {
 
 async function loadHistoryFromBackend() {
     const [matchesRes, eventsRes, playersRes] = await Promise.all([
-        fetch("http://localhost:5000/matches"),
-        fetch("http://localhost:5000/events"),
-        fetch("http://localhost:5000/players")
+        fetch(apiUrl("/matches")),
+        fetch(apiUrl("/events")),
+        fetch(apiUrl("/players"))
     ]);
 
     if (!matchesRes.ok || !eventsRes.ok) {
@@ -209,7 +210,7 @@ export async function initHistorikk() {
 
                 if (resolvedBackendMatchId != null) {
                     try {
-                        const res = await fetch(`http://localhost:5000/matches/${resolvedBackendMatchId}`, {
+                        const res = await fetch(apiUrl(`/matches/${resolvedBackendMatchId}`), {
                             method: "DELETE"
                         });
 
@@ -228,7 +229,7 @@ export async function initHistorikk() {
                         console.log("Backend delete result", deleteResult);
 
                         // Verifiser at kampen faktisk er borte fra backend før vi oppdaterer UI.
-                        const verifyRes = await fetch("http://localhost:5000/matches");
+                        const verifyRes = await fetch(apiUrl("/matches"));
                         if (!verifyRes.ok) {
                             throw new Error(`Verification failed (${verifyRes.status})`);
                         }

@@ -113,6 +113,7 @@ import { initRedigerSpiller } from "./pages/players/rediger-spiller.js";
 import { initRedigerLag } from "./pages/teams/rediger-lag.js";
 import { initKampRapport } from "./pages/match/kamp-rapport.js";
 import { initHistorikk } from "./pages/historikk.js";
+import { initLogin, installAuthFetchInterceptor } from "./pages/login.js";
 
 function activateView(viewId) {
     const screenBg = document.querySelector(".screen-bg");
@@ -147,6 +148,10 @@ function activateView(viewId) {
         initKampRapport();
     } else if (viewId === "historikk") {
         initHistorikk();
+    } else if (viewId === "login") {
+        initLogin({
+            onLoginSuccess: () => navigateToReplacingCurrent("main_menu")
+        });
     }
 }
 
@@ -156,6 +161,8 @@ function activateView(viewId) {
 // ==============================
 
 document.addEventListener("DOMContentLoaded", () => {
+    installAuthFetchInterceptor();
+
     const screenBg = document.querySelector(".screen-bg");
     screenBg.classList.add("bg-home");
 });

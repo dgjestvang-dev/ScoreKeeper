@@ -1,10 +1,11 @@
 import { generateId } from "../utils.js";
+import { apiUrl } from "../config/api.js";
 
 let teams = {};
 
 export async function rehydrateTeamsFromBackend() {
     try {
-        const res = await fetch("http://localhost:5000/teams");
+        const res = await fetch(apiUrl("/teams"));
         if (!res.ok) {
             throw new Error(`Failed to load teams (${res.status})`);
         }
@@ -18,7 +19,7 @@ export async function rehydrateTeamsFromBackend() {
 
             let players = [];
             try {
-                const playersRes = await fetch(`http://localhost:5000/teams/${teamId}/players`);
+                const playersRes = await fetch(apiUrl(`/teams/${teamId}/players`));
                 if (playersRes.ok) {
                     const backendPlayers = await playersRes.json();
                     players = (Array.isArray(backendPlayers) ? backendPlayers : []).map((p) => ({
@@ -56,7 +57,7 @@ export function getTeam(teamId) {
 }
 
 export async function createTeam(name) {
-    const res = await fetch("http://localhost:5000/teams", {
+    const res = await fetch(apiUrl("/teams"), {
         method: "POST",
         headers: {
             "Content-Type": "application/json"
@@ -77,7 +78,7 @@ export async function createTeam(name) {
 }
 
 export async function addPlayer(teamId, player) {
-    const res = await fetch("http://localhost:5000/players", {
+    const res = await fetch(apiUrl("/players"), {
         method: "POST",
         headers: {
             "Content-Type": "application/json"
@@ -108,7 +109,7 @@ export function getPlayersForTeam(teamId) {
 }
 
 export async function deletePlayer(teamId, playerId) {
-    const res = await fetch(`http://localhost:5000/players/${playerId}`, {
+    const res = await fetch(apiUrl(`/players/${playerId}`), {
         method: "DELETE"
     });
 
@@ -124,7 +125,7 @@ export async function deletePlayer(teamId, playerId) {
 }
 
 export async function updateTeamName(teamId, newName) {
-    const res = await fetch(`http://localhost:5000/teams/${teamId}`, {
+    const res = await fetch(apiUrl(`/teams/${teamId}`), {
         method: "PATCH",
         headers: {
             "Content-Type": "application/json"
@@ -144,7 +145,7 @@ export async function updateTeamName(teamId, newName) {
 }
 
 export async function updatePlayer(teamId, playerId, updates) {
-    const res = await fetch(`http://localhost:5000/players/${playerId}`, {
+    const res = await fetch(apiUrl(`/players/${playerId}`), {
         method: "PATCH",
         headers: {
             "Content-Type": "application/json"
@@ -168,7 +169,7 @@ export async function updatePlayer(teamId, playerId, updates) {
 }
 
 export async function deleteTeam(teamId) {
-    const res = await fetch(`http://localhost:5000/teams/${teamId}`, {
+    const res = await fetch(apiUrl(`/teams/${teamId}`), {
         method: "DELETE"
     });
 

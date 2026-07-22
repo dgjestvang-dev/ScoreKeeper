@@ -151,6 +151,29 @@
                     <section class="view" id="login">
                         <h1>Logg inn</h1>
 
+                        <div class="card">
+                            <div class="form">
+                                <div class="field">
+                                    <label for="login-username">Brukernavn</label>
+                                    <input
+                                        type="text"
+                                        id="login-username"
+                                        placeholder="Skriv brukernavn"
+                                        autocomplete="username"
+                                    />
+                                </div>
+                                <div class="primary-actions">
+                                    <button id="login-submit-btn" type="button" class="action-button">
+                                        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                                            <use href="#icon-save"></use>
+                                        </svg>
+                                        <span class="label">Logg inn</span>
+                                    </button>
+                                </div>
+                                <p id="login-status" aria-live="polite"></p>
+                            </div>
+                        </div>
+
                         <button data-back class="icon-button">
                              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
                              <use href="#icon-back"></use>
@@ -784,7 +807,7 @@
 
 
     <!-- Legg til JavaScript-filen for navigasjon -->
-    <script type="module" src="js/navigation.js?v=2024"></script>
+    <script type="module" src="js/navigation.js?v=20260721-lan2"></script>
 </body>
 
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>

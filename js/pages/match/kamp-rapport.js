@@ -1,4 +1,5 @@
 import { buildMatchSummaryParts } from "./start-kamp.js";
+import { apiUrl } from "../../config/api.js";
 
 function toPlayerLabel(playerId, playersById) {
     if (!playerId) return "(Ukjent spiller)";
@@ -112,9 +113,9 @@ function buildSnapshotFromBackend(match, events, playersById) {
 
 async function loadSelectedMatchFromBackend(matchId) {
     const [matchesRes, eventsRes, playersRes] = await Promise.all([
-        fetch("http://localhost:5000/matches"),
-        fetch("http://localhost:5000/events"),
-        fetch("http://localhost:5000/players")
+        fetch(apiUrl("/matches")),
+        fetch(apiUrl("/events")),
+        fetch(apiUrl("/players"))
     ]);
 
     if (!matchesRes.ok || !eventsRes.ok) {

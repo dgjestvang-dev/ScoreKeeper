@@ -4,6 +4,7 @@
 
 import { createClock } from "../../core/clock.js";
 import { matchConfig } from "../../config/match-config.js";
+import { apiUrl, getApiBaseUrl } from "../../config/api.js";
 import { goBack, navigateTo } from "../../navigation.js";
 import { generateId } from "../../utils.js";
 
@@ -1002,7 +1003,7 @@ async function onBackClick() {
     let savedBackendMatchId = null;
 
     try {
-        const response = await fetch("http://localhost:5000/save-match", {
+        const response = await fetch(apiUrl("/save-match"), {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
@@ -1034,7 +1035,7 @@ async function onBackClick() {
             message.includes("Load failed");
 
         if (isNetworkError) {
-            alert("Kunne ikke koble til backend på http://localhost:5000. Sjekk at backend kjører, og prøv igjen.\n\nKampen er fortsatt aktiv.");
+            alert(`Kunne ikke koble til backend på ${getApiBaseUrl()}. Sjekk at backend kjører, og prøv igjen.\n\nKampen er fortsatt aktiv.`);
         } else {
             alert(`Kunne ikke lagre kampen til backend.\n\n${message}\n\nKampen er fortsatt aktiv, prøv igjen.`);
         }
