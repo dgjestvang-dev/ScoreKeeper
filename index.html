@@ -807,7 +807,13 @@
 
 
     <!-- Legg til JavaScript-filen for navigasjon -->
-    <script type="module" src="js/navigation.js?v=20260721-lan2"></script>
+    <script>
+        // Set this in production (Render static site) to your backend URL, e.g.
+        // window.__API_BASE_URL = "https://score-keeper-api.onrender.com";
+        window.__API_BASE_URL = window.__API_BASE_URL || "";
+    </script>
+
+    <script type="module" src="js/navigation.js?v=20260722-render1"></script>
 </body>
 
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>

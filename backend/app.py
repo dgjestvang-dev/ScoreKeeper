@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 import sqlite3
 
@@ -8,7 +9,27 @@ app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
 
 BASE_DIR = Path(__file__).resolve().parent
-DB_PATH = BASE_DIR / "score_keeper.db"
+PROJECT_ROOT = BASE_DIR.parent
+INSTANCE_DIR = PROJECT_ROOT / "instance"
+
+
+def resolve_db_path():
+    env_db_path = os.getenv("DATABASE_PATH") or os.getenv("DB_PATH")
+
+    if env_db_path:
+        path = Path(env_db_path).expanduser()
+        if not path.is_absolute():
+            path = (PROJECT_ROOT / path).resolve()
+
+        path.parent.mkdir(parents=True, exist_ok=True)
+        return path
+
+    default_path = INSTANCE_DIR / "score_keeper.db"
+    INSTANCE_DIR.mkdir(parents=True, exist_ok=True)
+    return default_path
+
+
+DB_PATH = resolve_db_path()
 
 DEFAULT_CUSTOMER_NAME = "Extensor Demo"
 DEFAULT_CUSTOMER_SLUG = "extensor-demo"
@@ -956,5 +977,12 @@ if __name__ == "__main__":
             "username": DEFAULT_USERNAME
         }
     )
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    port = int(os.getenv("PORT", "5000"))
+    is_render = (os.getenv("RENDER") or "").lower() == "true"
+    debug = (os.getenv("FLASK_DEBUG") or "1") == "1"
+
+    if is_render:
+        debug = False
+
+    app.run(host="0.0.0.0", port=port, debug=debug)
     
