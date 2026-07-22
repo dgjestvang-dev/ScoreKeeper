@@ -30,6 +30,7 @@ def resolve_db_path():
 
 
 DB_PATH = resolve_db_path()
+SEED_SQL_PATH = BASE_DIR / "seed_data.sql"
 
 DEFAULT_CUSTOMER_NAME = "Extensor Demo"
 DEFAULT_CUSTOMER_SLUG = "extensor-demo"
@@ -87,6 +88,23 @@ def ensure_default_customer_and_user(cursor):
     user_id = user_row["id"]
 
     return customer_id, user_id
+
+
+def import_seed_data_if_needed():
+    if DB_PATH.exists() and DB_PATH.stat().st_size > 0:
+        return False
+
+    if not SEED_SQL_PATH.exists():
+        return False
+
+    conn = sqlite3.connect(str(DB_PATH), timeout=10)
+    try:
+        with SEED_SQL_PATH.open("r", encoding="utf-8") as seed_file:
+            conn.executescript(seed_file.read())
+        conn.commit()
+        return True
+    finally:
+        conn.close()
 
 
 def get_request_user_context():
@@ -967,6 +985,7 @@ def save_match_with_events():
 
 
 if __name__ == "__main__":
+    import_seed_data_if_needed()
     init_db()
     print("Using DB:", DB_PATH)
     print(
