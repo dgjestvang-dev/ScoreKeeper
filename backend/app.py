@@ -24,6 +24,11 @@ def resolve_db_path():
         path.parent.mkdir(parents=True, exist_ok=True)
         return path
 
+    if (os.getenv("RENDER") or "").lower() == "true":
+        render_default = Path("/var/data/score_keeper.db")
+        render_default.parent.mkdir(parents=True, exist_ok=True)
+        return render_default
+
     default_path = INSTANCE_DIR / "score_keeper.db"
     INSTANCE_DIR.mkdir(parents=True, exist_ok=True)
     return default_path
