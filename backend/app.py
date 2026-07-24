@@ -6,6 +6,10 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 
 app = Flask(__name__)
+app.config["SECRET_KEY"] = os.environ.get(
+    "SECRET_KEY",
+    "local-development-key-do-not-use-in-production",
+)
 CORS(app, resources={r"/*": {"origins": "*"}})
 
 BASE_DIR = Path(__file__).resolve().parent
