@@ -114,6 +114,7 @@ import { initRedigerLag } from "./pages/teams/rediger-lag.js";
 import { initKampRapport } from "./pages/match/kamp-rapport.js";
 import { initHistorikk } from "./pages/historikk.js";
 import { initLogin, installAuthFetchInterceptor } from "./pages/login.js";
+import { initSignup } from "./pages/signup.js";
 
 function activateView(viewId) {
     const screenBg = document.querySelector(".screen-bg");
@@ -151,6 +152,10 @@ function activateView(viewId) {
     } else if (viewId === "login") {
         initLogin({
             onLoginSuccess: () => navigateToReplacingCurrent("main_menu")
+        });
+    } else if (viewId === "signup") {
+        initSignup({
+            onSignupSuccess: () => navigateToReplacingCurrent("login")
         });
     }
 }

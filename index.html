@@ -185,6 +185,29 @@
                     <!-- Signup View -->
                     <section class="view" id="signup">
                         <h1>Opprett konto</h1>
+
+                        <div class="card">
+                            <div class="form">
+                                <div class="field">
+                                    <label for="signup-username">Brukernavn</label>
+                                    <input
+                                        type="text"
+                                        id="signup-username"
+                                        placeholder="Velg brukernavn"
+                                        autocomplete="username"
+                                    />
+                                </div>
+                                <div class="primary-actions">
+                                    <button id="signup-submit-btn" type="button" class="action-button">
+                                        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                                            <use href="#icon-save"></use>
+                                        </svg>
+                                        <span class="label">Opprett konto</span>
+                                    </button>
+                                </div>
+                                <p id="signup-status" aria-live="polite"></p>
+                            </div>
+                        </div>
                         
                         <button data-back class="icon-button">
                              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">

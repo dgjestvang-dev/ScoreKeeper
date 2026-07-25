@@ -3,6 +3,10 @@ import { apiUrl, getApiBaseUrl } from "../config/api.js";
 let activeUser = null;
 let fetchInterceptorInstalled = false;
 
+const USERNAME_MIN_LEN = 3;
+const USERNAME_MAX_LEN = 30;
+const USERNAME_REGEX = /^[a-z0-9_.-]+$/;
+
 function getBackendUrlFromInput(input) {
     if (typeof input === "string") return input;
     if (input && typeof input.url === "string") return input.url;
@@ -23,6 +27,27 @@ function updateLoginStatus(statusEl) {
 
     const displayName = activeUser.display_name || activeUser.username;
     statusEl.textContent = `Logget inn som ${displayName} (id: ${activeUser.id})`;
+}
+
+
+function validateUsername(username) {
+    if (!username) {
+        return "Skriv inn et brukernavn";
+    }
+
+    if (username.length < USERNAME_MIN_LEN) {
+        return `Brukernavn må ha minst ${USERNAME_MIN_LEN} tegn`;
+    }
+
+    if (username.length > USERNAME_MAX_LEN) {
+        return `Brukernavn kan maks ha ${USERNAME_MAX_LEN} tegn`;
+    }
+
+    if (!USERNAME_REGEX.test(username)) {
+        return "Bruk kun små bokstaver, tall, punktum, understrek eller bindestrek";
+    }
+
+    return null;
 }
 
 export function installAuthFetchInterceptor() {
@@ -62,9 +87,10 @@ export function initLogin(options = {}) {
     submitBtn.onclick = async () => {
         const username = (usernameInput.value || "").trim().toLowerCase();
         const loginEndpoint = apiUrl("/auth/login");
+        const usernameError = validateUsername(username);
 
-        if (!username) {
-            if (statusEl) statusEl.textContent = "Skriv inn et brukernavn";
+        if (usernameError) {
+            if (statusEl) statusEl.textContent = usernameError;
             return;
         }
 

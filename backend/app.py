@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+import re
 import sqlite3
 
 from flask import Flask, jsonify, request
@@ -41,12 +42,13 @@ def resolve_db_path():
 DB_PATH = resolve_db_path()
 SEED_SQL_PATH = BASE_DIR / "seed_data.sql"
 
-DEFAULT_CUSTOMER_NAME = "Extensor Demo"
-DEFAULT_CUSTOMER_SLUG = "extensor-demo"
 DEFAULT_USERNAME = "danie"
 DEFAULT_DISPLAY_NAME = "Danie"
 
-DEFAULT_CUSTOMER_ID = None
+USERNAME_MIN_LEN = 3
+USERNAME_MAX_LEN = 30
+USERNAME_PATTERN = re.compile(r"^[a-z0-9_.-]+$")
+
 DEFAULT_USER_ID = None
 
 
@@ -54,6 +56,26 @@ def get_db_connection():
     conn = sqlite3.connect(str(DB_PATH), timeout=10)
     conn.row_factory = sqlite3.Row
     return conn
+
+
+def normalize_username(value):
+    return (value or "").strip().lower()
+
+
+def validate_username(username):
+    if not username:
+        return "username is required"
+
+    if len(username) < USERNAME_MIN_LEN:
+        return f"username must be at least {USERNAME_MIN_LEN} characters"
+
+    if len(username) > USERNAME_MAX_LEN:
+        return f"username must be at most {USERNAME_MAX_LEN} characters"
+
+    if not USERNAME_PATTERN.fullmatch(username):
+        return "username can only contain lowercase letters, numbers, '.', '_' or '-'"
+
+    return None
 
 
 def ensure_column(cursor, table_name, column_name, column_sql_type):
@@ -67,36 +89,127 @@ def ensure_column(cursor, table_name, column_name, column_sql_type):
         )
 
 
-def ensure_default_customer_and_user(cursor):
+def table_has_column(cursor, table_name, column_name):
+    columns = cursor.execute(f"PRAGMA table_info({table_name})").fetchall()
+    return any(row["name"] == column_name for row in columns)
+
+
+def ensure_default_user(cursor):
     cursor.execute(
         """
-        INSERT OR IGNORE INTO customers (name, slug)
-        VALUES (?, ?)
+        INSERT OR IGNORE INTO users (username, display_name, role)
+        VALUES (?, ?, ?)
         """,
-        (DEFAULT_CUSTOMER_NAME, DEFAULT_CUSTOMER_SLUG)
-    )
-
-    customer_row = cursor.execute(
-        "SELECT id FROM customers WHERE slug = ?",
-        (DEFAULT_CUSTOMER_SLUG,)
-    ).fetchone()
-    customer_id = customer_row["id"]
-
-    cursor.execute(
-        """
-        INSERT OR IGNORE INTO users (customer_id, username, display_name, role)
-        VALUES (?, ?, ?, ?)
-        """,
-        (customer_id, DEFAULT_USERNAME, DEFAULT_DISPLAY_NAME, "owner")
+        (DEFAULT_USERNAME, DEFAULT_DISPLAY_NAME, "owner")
     )
 
     user_row = cursor.execute(
         "SELECT id FROM users WHERE username = ?",
         (DEFAULT_USERNAME,)
     ).fetchone()
-    user_id = user_row["id"]
+    return user_row["id"]
 
-    return customer_id, user_id
+
+def remove_customer_model_if_present(cursor):
+    # SQLite cannot drop columns directly; rebuild affected tables.
+    if table_has_column(cursor, "users", "customer_id"):
+        cursor.execute("""
+            CREATE TABLE users_new (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT NOT NULL UNIQUE,
+                display_name TEXT,
+                role TEXT DEFAULT 'member',
+                is_active INTEGER DEFAULT 1,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cursor.execute("""
+            INSERT INTO users_new (id, username, display_name, role, is_active, created_at)
+            SELECT id, username, display_name, role, is_active, created_at
+            FROM users
+        """)
+        cursor.execute("DROP TABLE users")
+        cursor.execute("ALTER TABLE users_new RENAME TO users")
+
+    if table_has_column(cursor, "teams", "customer_id"):
+        cursor.execute("""
+            CREATE TABLE teams_new (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                owner_user_id INTEGER
+            )
+        """)
+        cursor.execute("""
+            INSERT INTO teams_new (id, name, owner_user_id)
+            SELECT id, name, owner_user_id
+            FROM teams
+        """)
+        cursor.execute("DROP TABLE teams")
+        cursor.execute("ALTER TABLE teams_new RENAME TO teams")
+
+    if table_has_column(cursor, "players", "customer_id"):
+        cursor.execute("""
+            CREATE TABLE players_new (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                team_id INTEGER,
+                name TEXT NOT NULL,
+                shirt_number INTEGER,
+                owner_user_id INTEGER,
+                FOREIGN KEY (team_id) REFERENCES teams (id)
+            )
+        """)
+        cursor.execute("""
+            INSERT INTO players_new (id, team_id, name, shirt_number, owner_user_id)
+            SELECT id, team_id, name, shirt_number, owner_user_id
+            FROM players
+        """)
+        cursor.execute("DROP TABLE players")
+        cursor.execute("ALTER TABLE players_new RENAME TO players")
+
+    if table_has_column(cursor, "matches", "customer_id"):
+        cursor.execute("""
+            CREATE TABLE matches_new (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                home_team_id INTEGER,
+                home_team_name TEXT,
+                away_team_id INTEGER,
+                away_team_name TEXT,
+                date TEXT,
+                owner_user_id INTEGER
+            )
+        """)
+        cursor.execute("""
+            INSERT INTO matches_new (id, home_team_id, home_team_name, away_team_id, away_team_name, date, owner_user_id)
+            SELECT id, home_team_id, home_team_name, away_team_id, away_team_name, date, owner_user_id
+            FROM matches
+        """)
+        cursor.execute("DROP TABLE matches")
+        cursor.execute("ALTER TABLE matches_new RENAME TO matches")
+
+    if table_has_column(cursor, "events", "customer_id"):
+        cursor.execute("""
+            CREATE TABLE events_new (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                match_id INTEGER,
+                owner_user_id INTEGER,
+                type TEXT,
+                team TEXT,
+                player_id TEXT,
+                half INTEGER,
+                minute INTEGER,
+                timestamp INTEGER,
+                FOREIGN KEY (match_id) REFERENCES matches (id)
+            )
+        """)
+        cursor.execute("""
+            INSERT INTO events_new (id, match_id, owner_user_id, type, team, player_id, half, minute, timestamp)
+            SELECT id, match_id, owner_user_id, type, team, player_id, half, minute, timestamp
+            FROM events
+        """)
+        cursor.execute("DROP TABLE events")
+        cursor.execute("ALTER TABLE events_new RENAME TO events")
+
+    cursor.execute("DROP TABLE IF EXISTS customers")
 
 
 def import_seed_data_if_needed():
@@ -127,11 +240,11 @@ def get_request_user_context():
             try:
                 candidate_user_id = int(user_id_raw)
             except ValueError:
-                return None, None, (jsonify({"error": "Invalid user_id"}), 400)
+                return None, (jsonify({"error": "Invalid user_id"}), 400)
 
             user = cursor.execute(
                 """
-                SELECT id, customer_id, username, display_name, role
+                SELECT id, username, display_name, role
                 FROM users
                 WHERE id = ? AND is_active = 1
                 """,
@@ -139,43 +252,31 @@ def get_request_user_context():
             ).fetchone()
 
             if not user:
-                return None, None, (jsonify({"error": "User not found"}), 404)
+                return None, (jsonify({"error": "User not found"}), 404)
 
-            return user["customer_id"], user["id"], None
+            return user["id"], None
 
-        customer_id, user_id = ensure_default_customer_and_user(cursor)
+        user_id = ensure_default_user(cursor)
         conn.commit()
-        return customer_id, user_id, None
+        return user_id, None
     finally:
         conn.close()
 
 
 def init_db():
-    global DEFAULT_CUSTOMER_ID
     global DEFAULT_USER_ID
 
     conn = get_db_connection()
     cursor = conn.cursor()
 
     cursor.execute("""
-        CREATE TABLE IF NOT EXISTS customers (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT NOT NULL,
-            slug TEXT NOT NULL UNIQUE,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-
-    cursor.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            customer_id INTEGER NOT NULL,
             username TEXT NOT NULL UNIQUE,
             display_name TEXT,
             role TEXT DEFAULT 'member',
             is_active INTEGER DEFAULT 1,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (customer_id) REFERENCES customers (id)
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
         )
     """)
 
@@ -183,7 +284,6 @@ def init_db():
         CREATE TABLE IF NOT EXISTS events (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             match_id INTEGER,
-            customer_id INTEGER,
             owner_user_id INTEGER,
             type TEXT,
             team TEXT,
@@ -199,7 +299,6 @@ def init_db():
         CREATE TABLE IF NOT EXISTS teams (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
-            customer_id INTEGER,
             owner_user_id INTEGER
         )
     """)
@@ -210,7 +309,6 @@ def init_db():
             team_id INTEGER,
             name TEXT NOT NULL,
             shirt_number INTEGER,
-            customer_id INTEGER,
             owner_user_id INTEGER,
             FOREIGN KEY (team_id) REFERENCES teams (id)
         )
@@ -224,59 +322,32 @@ def init_db():
             away_team_id INTEGER,
             away_team_name TEXT,
             date TEXT,
-            customer_id INTEGER,
             owner_user_id INTEGER
         )
     """)
 
-    ensure_column(cursor, "events", "customer_id", "INTEGER")
     ensure_column(cursor, "events", "owner_user_id", "INTEGER")
-    ensure_column(cursor, "teams", "customer_id", "INTEGER")
     ensure_column(cursor, "teams", "owner_user_id", "INTEGER")
-    ensure_column(cursor, "players", "customer_id", "INTEGER")
     ensure_column(cursor, "players", "owner_user_id", "INTEGER")
-    ensure_column(cursor, "matches", "customer_id", "INTEGER")
     ensure_column(cursor, "matches", "owner_user_id", "INTEGER")
 
-    default_customer_id, default_user_id = ensure_default_customer_and_user(cursor)
+    remove_customer_model_if_present(cursor)
 
-    cursor.execute(
-        "UPDATE teams SET customer_id = ? WHERE customer_id IS NULL",
-        (default_customer_id,)
-    )
+    default_user_id = ensure_default_user(cursor)
+
     cursor.execute(
         "UPDATE teams SET owner_user_id = ? WHERE owner_user_id IS NULL",
         (default_user_id,)
     )
 
     cursor.execute(
-        "UPDATE players SET customer_id = ? WHERE customer_id IS NULL",
-        (default_customer_id,)
-    )
-    cursor.execute(
         "UPDATE players SET owner_user_id = ? WHERE owner_user_id IS NULL",
         (default_user_id,)
     )
 
     cursor.execute(
-        "UPDATE matches SET customer_id = ? WHERE customer_id IS NULL",
-        (default_customer_id,)
-    )
-    cursor.execute(
         "UPDATE matches SET owner_user_id = ? WHERE owner_user_id IS NULL",
         (default_user_id,)
-    )
-
-    cursor.execute(
-        """
-        UPDATE events
-        SET customer_id = COALESCE(
-            (SELECT customer_id FROM matches WHERE matches.id = events.match_id),
-            ?
-        )
-        WHERE customer_id IS NULL
-        """,
-        (default_customer_id,)
     )
 
     cursor.execute(
@@ -307,7 +378,6 @@ def init_db():
         "CREATE INDEX IF NOT EXISTS idx_events_match ON events(match_id)"
     )
 
-    DEFAULT_CUSTOMER_ID = default_customer_id
     DEFAULT_USER_ID = default_user_id
 
     conn.commit()
@@ -325,17 +395,17 @@ def auth_login():
         return "", 200
 
     data = request.json or {}
-    username = (data.get("username") or "").strip().lower()
-
-    if not username:
-        return jsonify({"error": "username is required"}), 400
+    username = normalize_username(data.get("username"))
+    username_error = validate_username(username)
+    if username_error:
+        return jsonify({"error": username_error}), 400
 
     conn = get_db_connection()
     cursor = conn.cursor()
 
     row = cursor.execute(
         """
-        SELECT id, customer_id, username, display_name, role, is_active, created_at
+        SELECT id, username, display_name, role, is_active, created_at
         FROM users
         WHERE username = ? AND is_active = 1
         """,
@@ -352,7 +422,7 @@ def auth_login():
 
 @app.route("/users", methods=["GET"])
 def get_users():
-    customer_id, _, error = get_request_user_context()
+    _, error = get_request_user_context()
     if error:
         return error
 
@@ -361,12 +431,10 @@ def get_users():
 
     rows = cursor.execute(
         """
-        SELECT id, customer_id, username, display_name, role, is_active, created_at
+        SELECT id, username, display_name, role, is_active, created_at
         FROM users
-        WHERE customer_id = ?
         ORDER BY id ASC
         """,
-        (customer_id,)
     ).fetchall()
 
     users = [dict(row) for row in rows]
@@ -379,17 +447,18 @@ def create_user():
     if request.method == "OPTIONS":
         return "", 200
 
-    customer_id, _, error = get_request_user_context()
+    _, error = get_request_user_context()
     if error:
         return error
 
     data = request.json or {}
-    username = (data.get("username") or "").strip().lower()
+    username = normalize_username(data.get("username"))
     display_name = (data.get("display_name") or "").strip()
     role = (data.get("role") or "member").strip().lower()
 
-    if not username:
-        return jsonify({"error": "username is required"}), 400
+    username_error = validate_username(username)
+    if username_error:
+        return jsonify({"error": username_error}), 400
 
     if role not in {"owner", "admin", "member"}:
         return jsonify({"error": "role must be owner, admin, or member"}), 400
@@ -400,17 +469,16 @@ def create_user():
     try:
         cursor.execute(
             """
-            INSERT INTO users (customer_id, username, display_name, role)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO users (username, display_name, role)
+            VALUES (?, ?, ?)
             """,
-            (customer_id, username, display_name or username, role)
+            (username, display_name or username, role)
         )
         user_id = cursor.lastrowid
         conn.commit()
         return jsonify({
             "status": "user created",
             "id": user_id,
-            "customer_id": customer_id,
             "username": username,
             "display_name": display_name or username,
             "role": role
@@ -424,7 +492,7 @@ def create_user():
 
 @app.route("/users/me", methods=["GET"])
 def get_me():
-    _, user_id, error = get_request_user_context()
+    user_id, error = get_request_user_context()
     if error:
         return error
 
@@ -433,7 +501,7 @@ def get_me():
 
     row = cursor.execute(
         """
-        SELECT id, customer_id, username, display_name, role, is_active, created_at
+        SELECT id, username, display_name, role, is_active, created_at
         FROM users
         WHERE id = ?
         """,
@@ -454,7 +522,7 @@ def create_event():
         return "", 200
 
     try:
-        customer_id, user_id, error = get_request_user_context()
+        user_id, error = get_request_user_context()
         if error:
             return error
 
@@ -475,12 +543,11 @@ def create_event():
 
         cursor.execute("""
             INSERT INTO events (
-                match_id, customer_id, owner_user_id, type, team, player_id, half, minute, timestamp
+                match_id, owner_user_id, type, team, player_id, half, minute, timestamp
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             match_id,
-            customer_id,
             user_id,
             data.get("type"),
             data.get("team"),
@@ -501,7 +568,7 @@ def create_event():
 
 @app.route("/events", methods=["GET"])
 def get_events():
-    _, user_id, error = get_request_user_context()
+    user_id, error = get_request_user_context()
     if error:
         return error
 
@@ -524,7 +591,7 @@ def create_team():
     if request.method == "OPTIONS":
         return "", 200
 
-    customer_id, user_id, error = get_request_user_context()
+    user_id, error = get_request_user_context()
     if error:
         return error
 
@@ -534,9 +601,9 @@ def create_team():
     cursor = conn.cursor()
 
     cursor.execute("""
-        INSERT INTO teams (name, customer_id, owner_user_id)
-        VALUES (?, ?, ?)
-    """, (data.get("name"), customer_id, user_id))
+        INSERT INTO teams (name, owner_user_id)
+        VALUES (?, ?)
+    """, (data.get("name"), user_id))
 
     team_id = cursor.lastrowid
     conn.commit()
@@ -550,7 +617,7 @@ def create_team():
 
 @app.route("/teams", methods=["GET"])
 def get_teams():
-    _, user_id, error = get_request_user_context()
+    user_id, error = get_request_user_context()
     if error:
         return error
 
@@ -572,7 +639,7 @@ def delete_team(team_id):
     if request.method == "OPTIONS":
         return "", 200
 
-    _, user_id, error = get_request_user_context()
+    user_id, error = get_request_user_context()
     if error:
         return error
 
@@ -612,7 +679,7 @@ def update_team(team_id):
     if request.method == "OPTIONS":
         return "", 200
 
-    _, user_id, error = get_request_user_context()
+    user_id, error = get_request_user_context()
     if error:
         return error
 
@@ -653,7 +720,7 @@ def create_player():
     if request.method == "OPTIONS":
         return "", 200
 
-    customer_id, user_id, error = get_request_user_context()
+    user_id, error = get_request_user_context()
     if error:
         return error
 
@@ -672,13 +739,12 @@ def create_player():
         return jsonify({"error": "team not found"}), 404
 
     cursor.execute("""
-        INSERT INTO players (team_id, name, shirt_number, customer_id, owner_user_id)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO players (team_id, name, shirt_number, owner_user_id)
+        VALUES (?, ?, ?, ?)
     """, (
         team_id,
         data.get("name"),
         data.get("shirt_number"),
-        customer_id,
         user_id
     ))
 
@@ -694,7 +760,7 @@ def create_player():
 
 @app.route("/players", methods=["GET"])
 def get_players():
-    _, user_id, error = get_request_user_context()
+    user_id, error = get_request_user_context()
     if error:
         return error
 
@@ -716,7 +782,7 @@ def delete_player(player_id):
     if request.method == "OPTIONS":
         return "", 200
 
-    _, user_id, error = get_request_user_context()
+    user_id, error = get_request_user_context()
     if error:
         return error
 
@@ -751,7 +817,7 @@ def update_player(player_id):
     if request.method == "OPTIONS":
         return "", 200
 
-    _, user_id, error = get_request_user_context()
+    user_id, error = get_request_user_context()
     if error:
         return error
 
@@ -792,7 +858,7 @@ def update_player(player_id):
 
 @app.route("/teams/<int:team_id>/players", methods=["GET"])
 def get_players_for_team(team_id):
-    _, user_id, error = get_request_user_context()
+    user_id, error = get_request_user_context()
     if error:
         return error
 
@@ -816,7 +882,7 @@ def create_match():
     if request.method == "OPTIONS":
         return "", 200
 
-    customer_id, user_id, error = get_request_user_context()
+    user_id, error = get_request_user_context()
     if error:
         return error
 
@@ -832,17 +898,15 @@ def create_match():
             away_team_id,
             away_team_name,
             date,
-            customer_id,
             owner_user_id
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?)
     """, (
         data.get("home_team_id"),
         data.get("home_team_name"),
         data.get("away_team_id"),
         data.get("away_team_name"),
         data.get("date"),
-        customer_id,
         user_id
     ))
 
@@ -854,7 +918,7 @@ def create_match():
 
 @app.route("/matches", methods=["GET"])
 def get_matches():
-    _, user_id, error = get_request_user_context()
+    user_id, error = get_request_user_context()
     if error:
         return error
 
@@ -876,7 +940,7 @@ def delete_match(match_id):
     if request.method == "OPTIONS":
         return "", 200
 
-    _, user_id, error = get_request_user_context()
+    user_id, error = get_request_user_context()
     if error:
         return error
 
@@ -927,7 +991,7 @@ def save_match_with_events():
         return "", 200
 
     try:
-        customer_id, user_id, error = get_request_user_context()
+        user_id, error = get_request_user_context()
         if error:
             return error
 
@@ -945,17 +1009,15 @@ def save_match_with_events():
                 away_team_id,
                 away_team_name,
                 date,
-                customer_id,
                 owner_user_id
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?)
         """, (
             match.get("home_team_id"),
             match.get("home_team_name"),
             match.get("away_team_id"),
             match.get("away_team_name"),
             match.get("date"),
-            customer_id,
             user_id
         ))
 
@@ -964,7 +1026,6 @@ def save_match_with_events():
         event_data = [
             (
                 match_id,
-                customer_id,
                 user_id,
                 e.get("type"),
                 e.get("team"),
@@ -979,9 +1040,9 @@ def save_match_with_events():
         if event_data:
             cursor.executemany("""
                 INSERT INTO events (
-                    match_id, customer_id, owner_user_id, type, team, player_id, half, minute, timestamp
+                    match_id, owner_user_id, type, team, player_id, half, minute, timestamp
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """, event_data)
 
         conn.commit()
@@ -1000,7 +1061,6 @@ if __name__ == "__main__":
     print(
         "Default user seeded:",
         {
-            "customer_id": DEFAULT_CUSTOMER_ID,
             "user_id": DEFAULT_USER_ID,
             "username": DEFAULT_USERNAME
         }
