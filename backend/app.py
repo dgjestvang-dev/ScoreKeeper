@@ -43,14 +43,10 @@ def resolve_db_path():
 DB_PATH = resolve_db_path()
 SEED_SQL_PATH = BASE_DIR / "seed_data.sql"
 
-DEFAULT_USERNAME = "danie"
-DEFAULT_DISPLAY_NAME = "Danie"
-
 USERNAME_MIN_LEN = 3
 USERNAME_MAX_LEN = 30
 USERNAME_PATTERN = re.compile(r"^[a-z0-9_.-]+$")
 
-DEFAULT_USER_ID = None
 DB_BOOTSTRAPPED = False
 
 TEAM_CODE_LENGTH = 6
@@ -150,22 +146,6 @@ def user_owns_team(cursor, user_id, team_id):
         (team_id, user_id)
     ).fetchone()
     return legacy_owner is not None
-
-
-def ensure_default_user(cursor):
-    cursor.execute(
-        """
-        INSERT OR IGNORE INTO users (username, display_name, role)
-        VALUES (?, ?, ?)
-        """,
-        (DEFAULT_USERNAME, DEFAULT_DISPLAY_NAME, "owner")
-    )
-
-    user_row = cursor.execute(
-        "SELECT id FROM users WHERE username = ?",
-        (DEFAULT_USERNAME,)
-    ).fetchone()
-    return user_row["id"]
 
 
 def remove_customer_model_if_present(cursor):
@@ -323,16 +303,12 @@ def get_request_user_context():
 
             return user["id"], None
 
-        user_id = ensure_default_user(cursor)
-        conn.commit()
-        return user_id, None
+        return None, (jsonify({"error": "Authentication required"}), 401)
     finally:
         conn.close()
 
 
 def init_db():
-    global DEFAULT_USER_ID
-
     conn = get_db_connection()
     cursor = conn.cursor()
 
@@ -420,12 +396,16 @@ def init_db():
 
     ensure_column(cursor, "teams", "team_code", "TEXT")
 
-    default_user_id = ensure_default_user(cursor)
+    fallback_user_row = cursor.execute(
+        "SELECT id FROM users ORDER BY id ASC LIMIT 1"
+    ).fetchone()
+    fallback_user_id = fallback_user_row["id"] if fallback_user_row else None
 
-    cursor.execute(
-        "UPDATE teams SET owner_user_id = ? WHERE owner_user_id IS NULL",
-        (default_user_id,)
-    )
+    if fallback_user_id is not None:
+        cursor.execute(
+            "UPDATE teams SET owner_user_id = ? WHERE owner_user_id IS NULL",
+            (fallback_user_id,)
+        )
 
     cursor.execute(
         """
@@ -447,26 +427,34 @@ def init_db():
         )
 
     cursor.execute(
-        "UPDATE players SET owner_user_id = ? WHERE owner_user_id IS NULL",
-        (default_user_id,)
-    )
-
-    cursor.execute(
-        "UPDATE matches SET owner_user_id = ? WHERE owner_user_id IS NULL",
-        (default_user_id,)
-    )
-
-    cursor.execute(
         """
         UPDATE events
-        SET owner_user_id = COALESCE(
-            (SELECT owner_user_id FROM matches WHERE matches.id = events.match_id),
-            ?
+        SET owner_user_id = (
+            SELECT owner_user_id FROM matches WHERE matches.id = events.match_id
         )
         WHERE owner_user_id IS NULL
+          AND EXISTS (
+              SELECT 1
+              FROM matches
+              WHERE matches.id = events.match_id
+                AND owner_user_id IS NOT NULL
+          )
         """,
-        (default_user_id,)
     )
+
+    if fallback_user_id is not None:
+        cursor.execute(
+            "UPDATE players SET owner_user_id = ? WHERE owner_user_id IS NULL",
+            (fallback_user_id,)
+        )
+        cursor.execute(
+            "UPDATE matches SET owner_user_id = ? WHERE owner_user_id IS NULL",
+            (fallback_user_id,)
+        )
+        cursor.execute(
+            "UPDATE events SET owner_user_id = ? WHERE owner_user_id IS NULL",
+            (fallback_user_id,)
+        )
 
     cursor.execute(
         "CREATE INDEX IF NOT EXISTS idx_teams_owner ON teams(owner_user_id)"
@@ -492,8 +480,6 @@ def init_db():
     cursor.execute(
         "CREATE INDEX IF NOT EXISTS idx_events_match ON events(match_id)"
     )
-
-    DEFAULT_USER_ID = default_user_id
 
     conn.commit()
     conn.close()
@@ -574,10 +560,6 @@ def get_users():
 def create_user():
     if request.method == "OPTIONS":
         return "", 200
-
-    _, error = get_request_user_context()
-    if error:
-        return error
 
     data = request.json or {}
     username = normalize_username(data.get("username"))
@@ -1325,13 +1307,6 @@ def save_match_with_events():
 
 if __name__ == "__main__":
     print("Using DB:", DB_PATH)
-    print(
-        "Default user seeded:",
-        {
-            "user_id": DEFAULT_USER_ID,
-            "username": DEFAULT_USERNAME
-        }
-    )
     port = int(os.getenv("PORT", "5000"))
     is_render = (os.getenv("RENDER") or "").lower() == "true"
     debug = (os.getenv("FLASK_DEBUG") or "1") == "1"
