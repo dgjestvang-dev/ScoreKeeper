@@ -521,7 +521,7 @@ def auth_login():
         """
         SELECT id, username, first_name, last_name, display_name, role, is_active, created_at
         FROM users
-        WHERE username = ? AND is_active = 1
+        WHERE username = ? COLLATE NOCASE AND is_active = 1
         """,
         (username,)
     ).fetchone()
