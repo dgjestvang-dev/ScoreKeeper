@@ -138,3 +138,7 @@ export function initLogin(options = {}) {
 export function getActiveUser() {
     return activeUser;
 }
+
+export function logoutUser() {
+    activeUser = null;
+}

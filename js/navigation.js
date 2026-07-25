@@ -115,6 +115,7 @@ import { initRedigerLag } from "./pages/teams/rediger-lag.js";
 import { initKampRapport } from "./pages/match/kamp-rapport.js";
 import { initHistorikk } from "./pages/historikk.js";
 import { initLogin, installAuthFetchInterceptor } from "./pages/login.js";
+import { initMainMenu } from "./pages/main-menu.js";
 import { initSignup } from "./pages/signup.js";
 
 function activateView(viewId) {
@@ -132,6 +133,8 @@ function activateView(viewId) {
 
     if (viewId === "kampdag") {
         initKampdag();
+    } else if (viewId === "main_menu") {
+        initMainMenu();
     } else if (viewId === "start-kamp") {
         initStartKamp();
     } else if (viewId === "mine-lag") {
