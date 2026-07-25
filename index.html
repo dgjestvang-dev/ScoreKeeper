@@ -236,14 +236,7 @@
                                 </svg>
                                 <span class="label">Mine lag</span>
                             </button>
-
-                            <button data-nav="motstandere" id="motstandere-btn">
-                                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-                                    <use href="#icon-shield"></use>
-                                </svg>
-                                <span class="label">Motstandere</span>
-                            </button>
-
+                            
                             <button data-nav="historikk" aria-label="Historikk">
                                 <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
                                     <use href="#icon-stats"></use>
@@ -602,7 +595,10 @@
                                 <div class="menu-panel button-group">
 
                                     <h3 id="team-name-heading">Lag</h3>
-                                    <p id="team-code-label" class="team-code-label"></p>
+                                    <div class="team-code-row">
+                                        <p id="team-code-label" class="team-code-label"></p>
+                                        <button id="copy-team-code-btn" type="button" class="team-code-copy-btn">Kopier</button>
+                                    </div>
 
                                     <ul id="player-list" class="player-list">
                                         <!-- Spillere rendres her -->

@@ -318,9 +318,6 @@ h1  {
     display: none;
 }
 
-#motstandere-btn{
-    display: none;
-}
 
 
 #home h1 {
@@ -622,6 +619,33 @@ h1  {
     color: #6b7280;
     font-size: 14px;
     font-weight: 500;
+}
+
+.team-code-row {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.team-code-row .team-code-label {
+    margin: 0;
+}
+
+.team-code-copy-btn {
+    padding: 4px 8px;
+    font-size: 12px;
+    line-height: 1;
+    border-radius: 10px;
+    border: 1px solid #8d8d8d;
+    background-color: #ffd9bf;
+    color: #4b5563;
+    min-width: 56px;
+}
+
+.team-code-copy-btn:disabled {
+    opacity: 0.5;
 }
 
 
