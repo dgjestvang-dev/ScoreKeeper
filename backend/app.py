@@ -50,6 +50,7 @@ USERNAME_MAX_LEN = 30
 USERNAME_PATTERN = re.compile(r"^[a-z0-9_.-]+$")
 
 DEFAULT_USER_ID = None
+DB_BOOTSTRAPPED = False
 
 
 def get_db_connection():
@@ -382,6 +383,19 @@ def init_db():
 
     conn.commit()
     conn.close()
+
+
+def bootstrap_database():
+    global DB_BOOTSTRAPPED
+    if DB_BOOTSTRAPPED:
+        return
+
+    import_seed_data_if_needed()
+    init_db()
+    DB_BOOTSTRAPPED = True
+
+
+bootstrap_database()
 
 
 @app.route("/hello")
@@ -1055,8 +1069,6 @@ def save_match_with_events():
 
 
 if __name__ == "__main__":
-    import_seed_data_if_needed()
-    init_db()
     print("Using DB:", DB_PATH)
     print(
         "Default user seeded:",
