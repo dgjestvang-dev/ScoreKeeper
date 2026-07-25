@@ -617,6 +617,13 @@ h1  {
     height: 22px;
 }
 
+.team-code-label {
+    margin: -6px 0 8px;
+    color: #6b7280;
+    font-size: 14px;
+    font-weight: 500;
+}
+
 
 
 /* Knapper/logikk hoved div = .primary actions, alle knapper lagres som action-button. Sekundær div = secondary-actions*/

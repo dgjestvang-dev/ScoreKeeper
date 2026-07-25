@@ -35,6 +35,8 @@ export async function rehydrateTeamsFromBackend() {
             hydratedTeams[teamId] = {
                 id: teamId,
                 name: team.name,
+                teamCode: team.team_code || null,
+                membershipRole: team.membership_role || "member",
                 players
             };
         }
@@ -71,10 +73,35 @@ export async function createTeam(name) {
     teams[backendId] = {
         id: backendId,
         name,
+        teamCode: data.team_code || null,
+        membershipRole: "owner",
         players: []
     };
 
-    return backendId;
+    return {
+        id: backendId,
+        teamCode: data.team_code || null
+    };
+}
+
+export async function joinTeamByCode(teamCode) {
+    const normalizedCode = (teamCode || "").trim().toUpperCase();
+
+    const res = await fetch(apiUrl("/teams/join"), {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ team_code: normalizedCode })
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+        throw new Error(data.error || `Failed to join team (${res.status})`);
+    }
+
+    await rehydrateTeamsFromBackend();
+    return data;
 }
 
 export async function addPlayer(teamId, player) {

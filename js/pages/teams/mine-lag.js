@@ -34,7 +34,10 @@ function renderTeamList() {
     teamArray.forEach(team => {
         const li = document.createElement("li");
         li.className = "team-item";
-        li.textContent = team.name;
+        const label = team.teamCode
+            ? `${team.name} (${team.teamCode})`
+            : team.name;
+        li.textContent = label;
 
         li.dataset.nav = "lag-detaljer";
 

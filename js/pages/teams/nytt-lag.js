@@ -27,9 +27,13 @@ async function onSaveTeam() {
         return;
     }
 
-    await createTeam(name);
+    const created = await createTeam(name);
 
     console.log("Lag opprettet:", name);
+
+    if (created?.teamCode) {
+        alert(`Lag opprettet. Del denne koden: ${created.teamCode}`);
+    }
 
     teamNameInput.value = "";
 

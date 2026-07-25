@@ -107,6 +107,7 @@ import { initKampdag } from "./pages/match/kampdag.js";
 import { initStartKamp } from "./pages/match/start-kamp.js";
 import { initMineLag } from "./pages/teams/mine-lag.js";
 import { initNyttLag } from "./pages/teams/nytt-lag.js";
+import { initLeggTilLag } from "./pages/teams/legg-til-lag.js";
 import { initLagDetaljer } from "./pages/teams/lagdetaljer.js";
 import { initNySpiller } from "./pages/players/ny-spiller.js";
 import { initRedigerSpiller } from "./pages/players/rediger-spiller.js";
@@ -137,6 +138,8 @@ function activateView(viewId) {
         initMineLag();
     } else if (viewId === "nytt-lag") {
         initNyttLag();
+    } else if (viewId === "legg-til-lag") {
+        initLeggTilLag();
     } else if (viewId === "lag-detaljer") {
         initLagDetaljer();
     } else if (viewId === "ny-spiller") {

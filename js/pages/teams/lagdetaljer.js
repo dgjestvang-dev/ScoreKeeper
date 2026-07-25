@@ -3,13 +3,15 @@ import { getSelectedTeam } from "../../components/team-selection.js";
 import { setSelectedPlayer } from "../../components/player-selection.js";
 
 let teamNameHeading;
+let teamCodeLabel;
 let playerListEl;
 
 export function initLagDetaljer() {
     teamNameHeading = document.getElementById("team-name-heading");
+    teamCodeLabel = document.getElementById("team-code-label");
     playerListEl = document.getElementById("player-list");
 
-    if (!teamNameHeading || !playerListEl) {
+    if (!teamNameHeading || !teamCodeLabel || !playerListEl) {
         console.error("Lagdetaljer: DOM-elementer ikke funnet");
         return;
     }
@@ -25,6 +27,9 @@ export function initLagDetaljer() {
     const players = getPlayersForTeam(teamId);
 
     teamNameHeading.textContent = team.name;
+    teamCodeLabel.textContent = team.teamCode
+        ? `Lagkode ${team.teamCode}`
+        : "Lagkode mangler";
     renderPlayerList(players);
 }
 

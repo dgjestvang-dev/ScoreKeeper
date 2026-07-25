@@ -541,6 +541,13 @@
                             <span class="label">Opprett lag</span>
                             </button>
 
+                            <button class="sidestilte-knapper" id="join-team-btn" data-nav="legg-til-lag" type="button">
+                                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                                    <use href="#icon-pluss"> </use>
+                                </svg>
+                            <span class="label">Legg til lag med kode</span>
+                            </button>
+
 
                             
                         </div>
@@ -595,6 +602,7 @@
                                 <div class="menu-panel button-group">
 
                                     <h3 id="team-name-heading">Lag</h3>
+                                    <p id="team-code-label" class="team-code-label"></p>
 
                                     <ul id="player-list" class="player-list">
                                         <!-- Spillere rendres her -->
@@ -625,6 +633,43 @@
                                                 </div>
                                         </div>
                                     
+
+                                </div>
+                            </section>
+
+                            <section class="view menu" id="legg-til-lag">
+                                <div class="menu-panel button-group">
+
+                                    <h3>Legg til lag med kode</h3>
+
+                                    <div class="field">
+                                        <label for="join-team-code-input">Lagkode</label>
+                                        <input
+                                            type="text"
+                                            id="join-team-code-input"
+                                            placeholder="F.eks. AB3K7M"
+                                            autocomplete="off"
+                                        />
+                                    </div>
+
+                                    <div class="primary-actions">
+                                        <button id="join-team-submit-btn" type="button" class="action-button">
+                                            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                                                <use href="#icon-save"> </use>
+                                            </svg>
+                                            <span class="label">Legg til lag</span>
+                                        </button>
+                                        <div class="secondary-actions">
+                                            <button data-back class="action-button">
+                                                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                                                    <use href="#icon-x"> </use>
+                                                </svg>
+                                                <span class="label">Avbryt</span>
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <p id="join-team-status" aria-live="polite"></p>
 
                                 </div>
                             </section>

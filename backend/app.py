@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 import re
+import secrets
 import sqlite3
 
 from flask import Flask, jsonify, request
@@ -52,6 +53,9 @@ USERNAME_PATTERN = re.compile(r"^[a-z0-9_.-]+$")
 DEFAULT_USER_ID = None
 DB_BOOTSTRAPPED = False
 
+TEAM_CODE_LENGTH = 6
+TEAM_CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
+
 
 def get_db_connection():
     conn = sqlite3.connect(str(DB_PATH), timeout=10)
@@ -95,6 +99,59 @@ def table_has_column(cursor, table_name, column_name):
     return any(row["name"] == column_name for row in columns)
 
 
+def normalize_team_code(value):
+    return (value or "").strip().upper()
+
+
+def is_valid_team_code(code):
+    if len(code) != TEAM_CODE_LENGTH:
+        return False
+    return all(ch in TEAM_CODE_ALPHABET for ch in code)
+
+
+def generate_team_code(cursor):
+    while True:
+        code = "".join(secrets.choice(TEAM_CODE_ALPHABET) for _ in range(TEAM_CODE_LENGTH))
+        exists = cursor.execute(
+            "SELECT 1 FROM teams WHERE team_code = ?",
+            (code,)
+        ).fetchone()
+        if not exists:
+            return code
+
+
+def user_has_team_access(cursor, user_id, team_id):
+    row = cursor.execute(
+        """
+        SELECT 1
+        FROM user_teams
+        WHERE user_id = ? AND team_id = ?
+        """,
+        (user_id, team_id)
+    ).fetchone()
+    return row is not None
+
+
+def user_owns_team(cursor, user_id, team_id):
+    row = cursor.execute(
+        """
+        SELECT 1
+        FROM user_teams
+        WHERE user_id = ? AND team_id = ? AND role = 'owner'
+        """,
+        (user_id, team_id)
+    ).fetchone()
+
+    if row:
+        return True
+
+    legacy_owner = cursor.execute(
+        "SELECT 1 FROM teams WHERE id = ? AND owner_user_id = ?",
+        (team_id, user_id)
+    ).fetchone()
+    return legacy_owner is not None
+
+
 def ensure_default_user(cursor):
     cursor.execute(
         """
@@ -133,18 +190,27 @@ def remove_customer_model_if_present(cursor):
         cursor.execute("ALTER TABLE users_new RENAME TO users")
 
     if table_has_column(cursor, "teams", "customer_id"):
+        has_team_code = table_has_column(cursor, "teams", "team_code")
         cursor.execute("""
             CREATE TABLE teams_new (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
+                team_code TEXT,
                 owner_user_id INTEGER
             )
         """)
-        cursor.execute("""
-            INSERT INTO teams_new (id, name, owner_user_id)
-            SELECT id, name, owner_user_id
-            FROM teams
-        """)
+        if has_team_code:
+            cursor.execute("""
+                INSERT INTO teams_new (id, name, team_code, owner_user_id)
+                SELECT id, name, team_code, owner_user_id
+                FROM teams
+            """)
+        else:
+            cursor.execute("""
+                INSERT INTO teams_new (id, name, team_code, owner_user_id)
+                SELECT id, name, NULL, owner_user_id
+                FROM teams
+            """)
         cursor.execute("DROP TABLE teams")
         cursor.execute("ALTER TABLE teams_new RENAME TO teams")
 
@@ -300,7 +366,20 @@ def init_db():
         CREATE TABLE IF NOT EXISTS teams (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
+            team_code TEXT,
             owner_user_id INTEGER
+        )
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS user_teams (
+            user_id INTEGER NOT NULL,
+            team_id INTEGER NOT NULL,
+            role TEXT NOT NULL DEFAULT 'member',
+            joined_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (user_id, team_id),
+            FOREIGN KEY (user_id) REFERENCES users (id),
+            FOREIGN KEY (team_id) REFERENCES teams (id)
         )
     """)
 
@@ -328,11 +407,14 @@ def init_db():
     """)
 
     ensure_column(cursor, "events", "owner_user_id", "INTEGER")
+    ensure_column(cursor, "teams", "team_code", "TEXT")
     ensure_column(cursor, "teams", "owner_user_id", "INTEGER")
     ensure_column(cursor, "players", "owner_user_id", "INTEGER")
     ensure_column(cursor, "matches", "owner_user_id", "INTEGER")
 
     remove_customer_model_if_present(cursor)
+
+    ensure_column(cursor, "teams", "team_code", "TEXT")
 
     default_user_id = ensure_default_user(cursor)
 
@@ -340,6 +422,25 @@ def init_db():
         "UPDATE teams SET owner_user_id = ? WHERE owner_user_id IS NULL",
         (default_user_id,)
     )
+
+    cursor.execute(
+        """
+        INSERT OR IGNORE INTO user_teams (user_id, team_id, role)
+        SELECT owner_user_id, id, 'owner'
+        FROM teams
+        WHERE owner_user_id IS NOT NULL
+        """
+    )
+
+    teams_missing_code = cursor.execute(
+        "SELECT id FROM teams WHERE team_code IS NULL OR TRIM(team_code) = ''"
+    ).fetchall()
+    for row in teams_missing_code:
+        code = generate_team_code(cursor)
+        cursor.execute(
+            "UPDATE teams SET team_code = ? WHERE id = ?",
+            (code, row["id"])
+        )
 
     cursor.execute(
         "UPDATE players SET owner_user_id = ? WHERE owner_user_id IS NULL",
@@ -365,6 +466,15 @@ def init_db():
 
     cursor.execute(
         "CREATE INDEX IF NOT EXISTS idx_teams_owner ON teams(owner_user_id)"
+    )
+    cursor.execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_teams_code_unique ON teams(team_code)"
+    )
+    cursor.execute(
+        "CREATE INDEX IF NOT EXISTS idx_user_teams_user ON user_teams(user_id)"
+    )
+    cursor.execute(
+        "CREATE INDEX IF NOT EXISTS idx_user_teams_team ON user_teams(team_id)"
     )
     cursor.execute(
         "CREATE INDEX IF NOT EXISTS idx_players_owner ON players(owner_user_id)"
@@ -548,8 +658,15 @@ def create_event():
 
         if match_id is not None:
             match = cursor.execute(
-                "SELECT id FROM matches WHERE id = ? AND owner_user_id = ?",
-                (match_id, user_id)
+                """
+                SELECT m.id
+                FROM matches m
+                LEFT JOIN user_teams ut
+                    ON ut.team_id = m.home_team_id AND ut.user_id = ?
+                WHERE m.id = ?
+                  AND (ut.user_id IS NOT NULL OR m.owner_user_id = ?)
+                """,
+                (user_id, match_id, user_id)
             ).fetchone()
             if not match:
                 conn.close()
@@ -590,8 +707,17 @@ def get_events():
     cursor = conn.cursor()
 
     rows = cursor.execute(
-        "SELECT * FROM events WHERE owner_user_id = ?",
-        (user_id,)
+        """
+        SELECT DISTINCT e.*
+        FROM events e
+        LEFT JOIN matches m ON m.id = e.match_id
+        LEFT JOIN user_teams ut
+            ON ut.team_id = m.home_team_id AND ut.user_id = ?
+        WHERE ut.user_id IS NOT NULL
+           OR e.owner_user_id = ?
+        ORDER BY e.id ASC
+        """,
+        (user_id, user_id)
     ).fetchall()
     events = [dict(row) for row in rows]
 
@@ -613,20 +739,35 @@ def create_team():
 
     conn = get_db_connection()
     cursor = conn.cursor()
+    try:
+        team_name = (data.get("name") or "").strip()
+        if not team_name:
+            return jsonify({"error": "name is required"}), 400
 
-    cursor.execute("""
-        INSERT INTO teams (name, owner_user_id)
-        VALUES (?, ?)
-    """, (data.get("name"), user_id))
+        team_code = generate_team_code(cursor)
 
-    team_id = cursor.lastrowid
-    conn.commit()
-    conn.close()
+        cursor.execute("""
+            INSERT INTO teams (name, team_code, owner_user_id)
+            VALUES (?, ?, ?)
+        """, (team_name, team_code, user_id))
 
-    return jsonify({
-        "status": "team created",
-        "id": team_id
-    })
+        team_id = cursor.lastrowid
+        cursor.execute(
+            "INSERT OR IGNORE INTO user_teams (user_id, team_id, role) VALUES (?, ?, 'owner')",
+            (user_id, team_id)
+        )
+
+        conn.commit()
+        return jsonify({
+            "status": "team created",
+            "id": team_id,
+            "team_code": team_code
+        })
+    except Exception as exc:
+        conn.rollback()
+        return jsonify({"error": str(exc)}), 500
+    finally:
+        conn.close()
 
 
 @app.route("/teams", methods=["GET"])
@@ -639,13 +780,84 @@ def get_teams():
     cursor = conn.cursor()
 
     rows = cursor.execute(
-        "SELECT * FROM teams WHERE owner_user_id = ?",
+        """
+        SELECT t.*, ut.role AS membership_role
+        FROM teams t
+        JOIN user_teams ut ON ut.team_id = t.id
+        WHERE ut.user_id = ?
+        ORDER BY t.name ASC
+        """,
         (user_id,)
     ).fetchall()
     teams = [dict(row) for row in rows]
 
     conn.close()
     return jsonify(teams)
+
+
+@app.route("/teams/join", methods=["POST", "OPTIONS"])
+def join_team_by_code():
+    if request.method == "OPTIONS":
+        return "", 200
+
+    user_id, error = get_request_user_context()
+    if error:
+        return error
+
+    data = request.json or {}
+    team_code = normalize_team_code(data.get("team_code"))
+
+    if not is_valid_team_code(team_code):
+        return jsonify({"error": "invalid team code"}), 400
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    try:
+        team = cursor.execute(
+            "SELECT id, name, team_code FROM teams WHERE team_code = ?",
+            (team_code,)
+        ).fetchone()
+
+        if not team:
+            return jsonify({"error": "team not found"}), 404
+
+        existing = cursor.execute(
+            "SELECT role FROM user_teams WHERE user_id = ? AND team_id = ?",
+            (user_id, team["id"])
+        ).fetchone()
+
+        if existing:
+            return jsonify({
+                "status": "already member",
+                "team": {
+                    "id": team["id"],
+                    "name": team["name"],
+                    "team_code": team["team_code"],
+                    "membership_role": existing["role"]
+                }
+            })
+
+        cursor.execute(
+            "INSERT INTO user_teams (user_id, team_id, role) VALUES (?, ?, 'member')",
+            (user_id, team["id"])
+        )
+        conn.commit()
+
+        return jsonify({
+            "status": "joined",
+            "team": {
+                "id": team["id"],
+                "name": team["name"],
+                "team_code": team["team_code"],
+                "membership_role": "member"
+            }
+        })
+    except Exception as exc:
+        conn.rollback()
+        return jsonify({"error": str(exc)}), 500
+    finally:
+        conn.close()
 
 
 @app.route("/teams/<int:team_id>", methods=["DELETE", "OPTIONS"])
@@ -661,22 +873,21 @@ def delete_team(team_id):
     cursor = conn.cursor()
 
     try:
-        cursor.execute(
-            "SELECT id FROM teams WHERE id = ? AND owner_user_id = ?",
-            (team_id, user_id)
-        )
-        team = cursor.fetchone()
-        if not team:
-            return jsonify({"error": "team not found"}), 404
+        if not user_owns_team(cursor, user_id, team_id):
+            return jsonify({"error": "only owner can delete team"}), 403
 
         # Delete team players first
         cursor.execute(
-            "DELETE FROM players WHERE team_id = ? AND owner_user_id = ?",
-            (team_id, user_id)
+            "DELETE FROM players WHERE team_id = ?",
+            (team_id,)
         )
         cursor.execute(
-            "DELETE FROM teams WHERE id = ? AND owner_user_id = ?",
-            (team_id, user_id)
+            "DELETE FROM user_teams WHERE team_id = ?",
+            (team_id,)
+        )
+        cursor.execute(
+            "DELETE FROM teams WHERE id = ?",
+            (team_id,)
         )
 
         conn.commit()
@@ -707,17 +918,12 @@ def update_team(team_id):
     cursor = conn.cursor()
 
     try:
-        cursor.execute(
-            "SELECT id FROM teams WHERE id = ? AND owner_user_id = ?",
-            (team_id, user_id)
-        )
-        team = cursor.fetchone()
-        if not team:
-            return jsonify({"error": "team not found"}), 404
+        if not user_owns_team(cursor, user_id, team_id):
+            return jsonify({"error": "only owner can update team"}), 403
 
         cursor.execute(
-            "UPDATE teams SET name = ? WHERE id = ? AND owner_user_id = ?",
-            (new_name, team_id, user_id)
+            "UPDATE teams SET name = ? WHERE id = ?",
+            (new_name, team_id)
         )
         conn.commit()
         return jsonify({"status": "team updated", "id": team_id, "name": new_name})
@@ -744,13 +950,9 @@ def create_player():
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    team = cursor.execute(
-        "SELECT id FROM teams WHERE id = ? AND owner_user_id = ?",
-        (team_id, user_id)
-    ).fetchone()
-    if not team:
+    if not user_has_team_access(cursor, user_id, team_id):
         conn.close()
-        return jsonify({"error": "team not found"}), 404
+        return jsonify({"error": "team not found for user"}), 404
 
     cursor.execute("""
         INSERT INTO players (team_id, name, shirt_number, owner_user_id)
@@ -782,7 +984,13 @@ def get_players():
     cursor = conn.cursor()
 
     rows = cursor.execute(
-        "SELECT * FROM players WHERE owner_user_id = ?",
+        """
+        SELECT p.*
+        FROM players p
+        JOIN user_teams ut ON ut.team_id = p.team_id
+        WHERE ut.user_id = ?
+        ORDER BY p.team_id ASC, p.shirt_number ASC, p.id ASC
+        """,
         (user_id,)
     ).fetchall()
     players = [dict(row) for row in rows]
@@ -804,17 +1012,21 @@ def delete_player(player_id):
     cursor = conn.cursor()
 
     try:
-        cursor.execute(
-            "SELECT id FROM players WHERE id = ? AND owner_user_id = ?",
+        player = cursor.execute(
+            """
+            SELECT p.id, p.team_id
+            FROM players p
+            JOIN user_teams ut ON ut.team_id = p.team_id
+            WHERE p.id = ? AND ut.user_id = ?
+            """,
             (player_id, user_id)
-        )
-        player = cursor.fetchone()
+        ).fetchone()
         if not player:
             return jsonify({"error": "player not found"}), 404
 
         cursor.execute(
-            "DELETE FROM players WHERE id = ? AND owner_user_id = ?",
-            (player_id, user_id)
+            "DELETE FROM players WHERE id = ?",
+            (player_id,)
         )
         conn.commit()
 
@@ -849,17 +1061,21 @@ def update_player(player_id):
     cursor = conn.cursor()
 
     try:
-        cursor.execute(
-            "SELECT id FROM players WHERE id = ? AND owner_user_id = ?",
+        player = cursor.execute(
+            """
+            SELECT p.id, p.team_id
+            FROM players p
+            JOIN user_teams ut ON ut.team_id = p.team_id
+            WHERE p.id = ? AND ut.user_id = ?
+            """,
             (player_id, user_id)
-        )
-        player = cursor.fetchone()
+        ).fetchone()
         if not player:
             return jsonify({"error": "player not found"}), 404
 
         cursor.execute(
-            "UPDATE players SET name = ?, shirt_number = ? WHERE id = ? AND owner_user_id = ?",
-            (new_name, new_shirt_number, player_id, user_id)
+            "UPDATE players SET name = ?, shirt_number = ? WHERE id = ?",
+            (new_name, new_shirt_number, player_id)
         )
         conn.commit()
         return jsonify({"status": "player updated", "id": player_id, "name": new_name, "shirt_number": new_shirt_number})
@@ -879,9 +1095,13 @@ def get_players_for_team(team_id):
     conn = get_db_connection()
     cursor = conn.cursor()
 
+    if not user_has_team_access(cursor, user_id, team_id):
+        conn.close()
+        return jsonify({"error": "team not found for user"}), 404
+
     rows = cursor.execute(
-        "SELECT * FROM players WHERE team_id = ? AND owner_user_id = ?",
-        (team_id, user_id)
+        "SELECT * FROM players WHERE team_id = ? ORDER BY shirt_number ASC, id ASC",
+        (team_id,)
     ).fetchall()
 
     players = [dict(row) for row in rows]
@@ -901,9 +1121,14 @@ def create_match():
         return error
 
     data = request.json or {}
+    home_team_id = data.get("home_team_id")
 
     conn = get_db_connection()
     cursor = conn.cursor()
+
+    if home_team_id is not None and not user_has_team_access(cursor, user_id, home_team_id):
+        conn.close()
+        return jsonify({"error": "team not found for user"}), 404
 
     cursor.execute("""
         INSERT INTO matches (
@@ -916,7 +1141,7 @@ def create_match():
         )
         VALUES (?, ?, ?, ?, ?, ?)
     """, (
-        data.get("home_team_id"),
+        home_team_id,
         data.get("home_team_name"),
         data.get("away_team_id"),
         data.get("away_team_name"),
@@ -940,8 +1165,16 @@ def get_matches():
     cursor = conn.cursor()
 
     rows = cursor.execute(
-        "SELECT * FROM matches WHERE owner_user_id = ?",
-        (user_id,)
+        """
+        SELECT DISTINCT m.*
+        FROM matches m
+        LEFT JOIN user_teams ut
+            ON ut.team_id = m.home_team_id AND ut.user_id = ?
+        WHERE ut.user_id IS NOT NULL
+           OR m.owner_user_id = ?
+        ORDER BY m.id DESC
+        """,
+        (user_id, user_id)
     ).fetchall()
     matches = [dict(row) for row in rows]
 
@@ -962,22 +1195,28 @@ def delete_match(match_id):
     cursor = conn.cursor()
 
     try:
-        cursor.execute(
-            "SELECT id FROM matches WHERE id = ? AND owner_user_id = ?",
-            (match_id, user_id)
-        )
-        match = cursor.fetchone()
+        match = cursor.execute(
+            """
+            SELECT m.id
+            FROM matches m
+            LEFT JOIN user_teams ut
+                ON ut.team_id = m.home_team_id AND ut.user_id = ?
+            WHERE m.id = ?
+              AND (ut.user_id IS NOT NULL OR m.owner_user_id = ?)
+            """,
+            (user_id, match_id, user_id)
+        ).fetchone()
         if not match:
             return jsonify({"error": "match not found"}), 404
 
         cursor.execute(
-            "DELETE FROM events WHERE match_id = ? AND owner_user_id = ?",
-            (match_id, user_id)
+            "DELETE FROM events WHERE match_id = ?",
+            (match_id,)
         )
         deleted_events = cursor.rowcount
         cursor.execute(
-            "DELETE FROM matches WHERE id = ? AND owner_user_id = ?",
-            (match_id, user_id)
+            "DELETE FROM matches WHERE id = ?",
+            (match_id,)
         )
         deleted_matches = cursor.rowcount
 
@@ -1012,9 +1251,14 @@ def save_match_with_events():
         data = request.json or {}
         match = data.get("match") or {}
         events = data.get("events", [])
+        home_team_id = match.get("home_team_id")
 
         conn = get_db_connection()
         cursor = conn.cursor()
+
+        if home_team_id is not None and not user_has_team_access(cursor, user_id, home_team_id):
+            conn.close()
+            return jsonify({"error": "team not found for user"}), 404
 
         cursor.execute("""
             INSERT INTO matches (
@@ -1027,7 +1271,7 @@ def save_match_with_events():
             )
             VALUES (?, ?, ?, ?, ?, ?)
         """, (
-            match.get("home_team_id"),
+            home_team_id,
             match.get("home_team_name"),
             match.get("away_team_id"),
             match.get("away_team_name"),
