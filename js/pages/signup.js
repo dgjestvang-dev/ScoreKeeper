@@ -27,18 +27,26 @@ function validateUsername(username) {
 export function initSignup(options = {}) {
     const { onSignupSuccess } = options;
 
+    const signupForm = document.getElementById("signup-form");
+    const fornavnInput = document.getElementById("signup-fornavn");
+    const etternavnInput = document.getElementById("signup-etternavn");
     const usernameInput = document.getElementById("signup-username");
     const submitBtn = document.getElementById("signup-submit-btn");
     const statusEl = document.getElementById("signup-status");
 
-    if (!usernameInput || !submitBtn) return;
+    if (!signupForm || !usernameInput || !submitBtn) return;
 
     if (statusEl) {
         statusEl.textContent = "";
     }
 
-    submitBtn.onclick = async () => {
+    signupForm.onsubmit = async (event) => {
+        event.preventDefault();
+
         const username = (usernameInput.value || "").trim().toLowerCase();
+        const fornavn = (fornavnInput?.value || "").trim();
+        const etternavn = (etternavnInput?.value || "").trim();
+        const displayName = `${fornavn} ${etternavn}`.trim();
         const usernameError = validateUsername(username);
 
         if (usernameError) {
@@ -55,7 +63,12 @@ export function initSignup(options = {}) {
                 headers: {
                     "Content-Type": "application/json"
                 },
-                body: JSON.stringify({ username })
+                body: JSON.stringify({
+                    username,
+                    first_name: fornavn,
+                    last_name: etternavn,
+                    display_name: displayName || username
+                })
             });
 
             if (!response.ok) {
@@ -76,6 +89,8 @@ export function initSignup(options = {}) {
             await response.json();
 
             alert(`Bruker '${username}' er opprettet`);
+            if (fornavnInput) fornavnInput.value = "";
+            if (etternavnInput) etternavnInput.value = "";
             usernameInput.value = "";
 
             if (typeof onSignupSuccess === "function") {

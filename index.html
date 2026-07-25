@@ -140,7 +140,7 @@
                         <div class="home-actions">
                             <button data-nav="signup">Opprett konto</button>
                             <button data-nav="login">Logg inn</button>
-                            <button data-nav="main_menu">Main menu</button>
+                            
                             <button data-back>Tilbake</button>
                         </div>
                           <!-- Bottom spacer -->
@@ -187,7 +187,28 @@
                         <h1>Opprett konto</h1>
 
                         <div class="card">
-                            <div class="form">
+                            <form class="form" id="signup-form">
+                                
+                                <div class="field">
+                                    <label for="signup-fornavn">Fornavn</label>
+                                    <input
+                                        type="text"                                         
+                                        id="signup-fornavn"
+                                        placeholder="Fornavn"
+                                        autocomplete="given-name"
+                                        required/>
+                                </div>
+
+                                  <div class="field">
+                                    <label for="signup-etternavn">Etternavn</label>
+                                    <input
+                                        type="text"
+                                        id="signup-etternavn"
+                                        placeholder="Etternavn"
+                                        autocomplete="family-name"
+                                        required/>
+                                </div>
+                                                                                                
                                 <div class="field">
                                     <label for="signup-username">Brukernavn</label>
                                     <input
@@ -195,10 +216,10 @@
                                         id="signup-username"
                                         placeholder="Velg brukernavn"
                                         autocomplete="username"
-                                    />
+                                        required/>
                                 </div>
                                 <div class="primary-actions">
-                                    <button id="signup-submit-btn" type="button" class="action-button">
+                                    <button id="signup-submit-btn" type="submit" class="action-button">
                                         <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
                                             <use href="#icon-save"></use>
                                         </svg>
@@ -206,7 +227,7 @@
                                     </button>
                                 </div>
                                 <p id="signup-status" aria-live="polite"></p>
-                            </div>
+                            </form>
                         </div>
                         
                         <button data-back class="icon-button">

@@ -340,6 +340,8 @@ def init_db():
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT NOT NULL UNIQUE,
+            first_name TEXT,
+            last_name TEXT,
             display_name TEXT,
             role TEXT DEFAULT 'member',
             is_active INTEGER DEFAULT 1,
@@ -407,6 +409,8 @@ def init_db():
     """)
 
     ensure_column(cursor, "events", "owner_user_id", "INTEGER")
+    ensure_column(cursor, "users", "first_name", "TEXT")
+    ensure_column(cursor, "users", "last_name", "TEXT")
     ensure_column(cursor, "teams", "team_code", "TEXT")
     ensure_column(cursor, "teams", "owner_user_id", "INTEGER")
     ensure_column(cursor, "players", "owner_user_id", "INTEGER")
@@ -529,7 +533,7 @@ def auth_login():
 
     row = cursor.execute(
         """
-        SELECT id, username, display_name, role, is_active, created_at
+        SELECT id, username, first_name, last_name, display_name, role, is_active, created_at
         FROM users
         WHERE username = ? AND is_active = 1
         """,
@@ -555,7 +559,7 @@ def get_users():
 
     rows = cursor.execute(
         """
-        SELECT id, username, display_name, role, is_active, created_at
+        SELECT id, username, first_name, last_name, display_name, role, is_active, created_at
         FROM users
         ORDER BY id ASC
         """,
@@ -577,8 +581,13 @@ def create_user():
 
     data = request.json or {}
     username = normalize_username(data.get("username"))
+    first_name = (data.get("first_name") or "").strip()
+    last_name = (data.get("last_name") or "").strip()
     display_name = (data.get("display_name") or "").strip()
     role = (data.get("role") or "member").strip().lower()
+
+    if not display_name:
+        display_name = f"{first_name} {last_name}".strip() or username
 
     username_error = validate_username(username)
     if username_error:
@@ -593,10 +602,10 @@ def create_user():
     try:
         cursor.execute(
             """
-            INSERT INTO users (username, display_name, role)
-            VALUES (?, ?, ?)
+            INSERT INTO users (username, first_name, last_name, display_name, role)
+            VALUES (?, ?, ?, ?, ?)
             """,
-            (username, display_name or username, role)
+            (username, first_name or None, last_name or None, display_name, role)
         )
         user_id = cursor.lastrowid
         conn.commit()
@@ -604,7 +613,9 @@ def create_user():
             "status": "user created",
             "id": user_id,
             "username": username,
-            "display_name": display_name or username,
+            "first_name": first_name,
+            "last_name": last_name,
+            "display_name": display_name,
             "role": role
         })
     except sqlite3.IntegrityError:
@@ -625,7 +636,7 @@ def get_me():
 
     row = cursor.execute(
         """
-        SELECT id, username, display_name, role, is_active, created_at
+        SELECT id, username, first_name, last_name, display_name, role, is_active, created_at
         FROM users
         WHERE id = ?
         """,
