@@ -325,6 +325,11 @@ h1  {
     color: #F67100;
 }
 
+#main_menu h1 {
+    color: #F67100;
+}
+
+
 /* home screen layout*/
 .home {
     justify-content: flex-start;
@@ -345,6 +350,84 @@ h1  {
     justify-content: flex-start;
     gap: 16px;
     
+}
+
+.main-menu-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 0 24px;
+}
+
+.main-menu-header h1 {
+    margin: 0;
+}
+
+.user-menu-wrap {
+    position: relative;
+}
+
+.user-avatar-btn {
+    width: 38px;
+    height: 38px;
+    border-radius: 999px;
+    border: 1px solid #111;
+    background: #ffe3d1;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.user-menu-dropdown {
+    position: absolute;
+    top: 44px;
+    right: 0;
+    min-width: 210px;
+    background: #fff6f0;
+    border: 1px solid #111;
+    border-radius: 10px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+    overflow: hidden;
+    z-index: 20;
+}
+
+.hidden {
+    display: none !important;
+}
+
+.user-menu-head {
+    padding: 10px 12px;
+    border-bottom: 1px solid #d6d3d1;
+    text-align: left;
+}
+
+.user-menu-name {
+    font-weight: 700;
+    font-size: 14px;
+}
+
+.user-menu-username {
+    color: #6b7280;
+    font-size: 13px;
+    margin-top: 2px;
+}
+
+.user-menu-item {
+    width: 100%;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    text-align: left;
+    padding: 10px 12px;
+    font-size: 14px;
+}
+
+.user-menu-item + .user-menu-item {
+    border-top: 1px solid #e7e5e4;
 }
 
 .spacer {

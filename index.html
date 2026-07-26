@@ -174,12 +174,14 @@
                             </div>
                         </div>
 
-                        <button data-back class="icon-button">
+                        <!-- back button-->
+                        <button data-back class="icon-button icon-only back-button" aria-label="Tilbake">
                              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-                             <use href="#icon-back"></use>
+                                 <use href="#icon-back"></use>
                              </svg>
                              <span class="label">Tilbake</span>
                         </button>
+
                     </section>
 
                     <!-- Signup View -->
@@ -229,20 +231,38 @@
                                 <p id="signup-status" aria-live="polite"></p>
                             </form>
                         </div>
-                        
-                        <button data-back class="icon-button">
+
+                        <!-- back button-->
+                        <button data-back class="icon-button icon-only back-button" aria-label="Tilbake">
                              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-                             <use href="#icon-back"></use>
+                                 <use href="#icon-back"></use>
                              </svg>
                              <span class="label">Tilbake</span>
                         </button>
-
+                        
+                        
 
                     </section>
 
                     <!-- Main menu-->
                     <section class="view menu" id="main_menu">
-                        <h1>Hovedmeny</h1>
+                        <div class="main-menu-header">
+                            <h1>Hovedmeny</h1>
+                            <div class="user-menu-wrap">
+                                <button id="user-menu-trigger" class="user-avatar-btn" type="button" aria-label="Åpne brukermeny">
+                                    <span id="user-avatar-initials">?</span>
+                                </button>
+                                <div id="user-menu-dropdown" class="user-menu-dropdown hidden" role="menu" aria-label="Brukermeny">
+                                    <div class="user-menu-head">
+                                        <div id="user-menu-name" class="user-menu-name">Ukjent bruker</div>
+                                        <div id="user-menu-username" class="user-menu-username">@ukjent</div>
+                                    </div>
+                                    <button id="user-menu-info-btn" type="button" class="user-menu-item" role="menuitem">Se brukerinfo</button>
+                                    <button id="user-menu-logout-btn" type="button" class="user-menu-item" role="menuitem">Logg ut</button>
+                                </div>
+                            </div>
+                        </div>
+                        
                         <div class="menu-panel button-group">
                             <button data-nav="kampdag">
                                 <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -264,24 +284,9 @@
                                 </svg>
                                 <span class="label">Historikk</span>
                             </button>
-
-                            <button id="logout-btn" type="button" aria-label="Logg ut">
-                                <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-                                    <use href="#icon-x"></use>
-                                </svg>
-                                <span class="label">Logg ut</span>
-                            </button>
                       
                     </div>
-                        <!-- back button, ikke en del av "buttons" diven som er over som stryrer menyene-->
-                        <button data-back class="icon-button icon-only back-button" aria-label="Tilbake">
-                             <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-                                 <use href="#icon-back"></use>
-                             </svg>
-                             <span class="label">Tilbake</span>
-                        </button>
-
-
+                    
                     </section>
                     
                     <!-- Kampdag menu (nested menu) -->
