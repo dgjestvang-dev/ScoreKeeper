@@ -4,7 +4,7 @@ import re
 import secrets
 import sqlite3
 
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 
 app = Flask(__name__)
@@ -51,6 +51,26 @@ DB_BOOTSTRAPPED = False
 
 TEAM_CODE_LENGTH = 6
 TEAM_CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
+
+
+@app.route("/", methods=["GET"])
+def serve_index():
+    return send_from_directory(str(PROJECT_ROOT), "index.html")
+
+
+@app.route("/styles.css", methods=["GET"])
+def serve_styles():
+    return send_from_directory(str(PROJECT_ROOT), "styles.css")
+
+
+@app.route("/Football.png", methods=["GET"])
+def serve_logo():
+    return send_from_directory(str(PROJECT_ROOT), "Football.png")
+
+
+@app.route("/js/<path:asset_path>", methods=["GET"])
+def serve_js(asset_path):
+    return send_from_directory(str(PROJECT_ROOT / "js"), asset_path)
 
 
 def get_db_connection():
