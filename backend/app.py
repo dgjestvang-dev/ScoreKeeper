@@ -272,6 +272,159 @@ def remove_customer_model_if_present(cursor):
     cursor.execute("DROP TABLE IF EXISTS customers")
 
 
+def remove_owner_columns_if_present(cursor):
+    # Hard cleanup: physically remove legacy owner_user_id columns.
+    if table_has_column(cursor, "teams", "owner_user_id"):
+        has_team_code = table_has_column(cursor, "teams", "team_code")
+        has_created_by = table_has_column(cursor, "teams", "created_by_user_id")
+
+        cursor.execute("""
+            CREATE TABLE teams_new (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                team_code TEXT,
+                created_by_user_id INTEGER
+            )
+        """)
+
+        if has_team_code and has_created_by:
+            cursor.execute("""
+                INSERT INTO teams_new (id, name, team_code, created_by_user_id)
+                SELECT id, name, team_code, COALESCE(created_by_user_id, owner_user_id)
+                FROM teams
+            """)
+        elif has_team_code:
+            cursor.execute("""
+                INSERT INTO teams_new (id, name, team_code, created_by_user_id)
+                SELECT id, name, team_code, owner_user_id
+                FROM teams
+            """)
+        elif has_created_by:
+            cursor.execute("""
+                INSERT INTO teams_new (id, name, team_code, created_by_user_id)
+                SELECT id, name, NULL, COALESCE(created_by_user_id, owner_user_id)
+                FROM teams
+            """)
+        else:
+            cursor.execute("""
+                INSERT INTO teams_new (id, name, team_code, created_by_user_id)
+                SELECT id, name, NULL, owner_user_id
+                FROM teams
+            """)
+
+        cursor.execute("DROP TABLE teams")
+        cursor.execute("ALTER TABLE teams_new RENAME TO teams")
+
+    if table_has_column(cursor, "players", "owner_user_id"):
+        has_created_by = table_has_column(cursor, "players", "created_by_user_id")
+
+        cursor.execute("""
+            CREATE TABLE players_new (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                team_id INTEGER,
+                name TEXT NOT NULL,
+                shirt_number INTEGER,
+                created_by_user_id INTEGER,
+                FOREIGN KEY (team_id) REFERENCES teams (id)
+            )
+        """)
+
+        if has_created_by:
+            cursor.execute("""
+                INSERT INTO players_new (id, team_id, name, shirt_number, created_by_user_id)
+                SELECT id, team_id, name, shirt_number, COALESCE(created_by_user_id, owner_user_id)
+                FROM players
+            """)
+        else:
+            cursor.execute("""
+                INSERT INTO players_new (id, team_id, name, shirt_number, created_by_user_id)
+                SELECT id, team_id, name, shirt_number, owner_user_id
+                FROM players
+            """)
+
+        cursor.execute("DROP TABLE players")
+        cursor.execute("ALTER TABLE players_new RENAME TO players")
+
+    if table_has_column(cursor, "matches", "owner_user_id"):
+        has_created_by = table_has_column(cursor, "matches", "created_by_user_id")
+
+        cursor.execute("""
+            CREATE TABLE matches_new (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                home_team_id INTEGER,
+                home_team_name TEXT,
+                away_team_id INTEGER,
+                away_team_name TEXT,
+                date TEXT,
+                created_by_user_id INTEGER
+            )
+        """)
+
+        if has_created_by:
+            cursor.execute("""
+                INSERT INTO matches_new (id, home_team_id, home_team_name, away_team_id, away_team_name, date, created_by_user_id)
+                SELECT id, home_team_id, home_team_name, away_team_id, away_team_name, date, COALESCE(created_by_user_id, owner_user_id)
+                FROM matches
+            """)
+        else:
+            cursor.execute("""
+                INSERT INTO matches_new (id, home_team_id, home_team_name, away_team_id, away_team_name, date, created_by_user_id)
+                SELECT id, home_team_id, home_team_name, away_team_id, away_team_name, date, owner_user_id
+                FROM matches
+            """)
+
+        cursor.execute("DROP TABLE matches")
+        cursor.execute("ALTER TABLE matches_new RENAME TO matches")
+
+    if table_has_column(cursor, "events", "owner_user_id"):
+        has_created_by = table_has_column(cursor, "events", "created_by_user_id")
+        has_stoppage_time = table_has_column(cursor, "events", "stoppage_time")
+
+        cursor.execute("""
+            CREATE TABLE events_new (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                match_id INTEGER,
+                created_by_user_id INTEGER,
+                type TEXT,
+                team TEXT,
+                player_id TEXT,
+                half INTEGER,
+                minute INTEGER,
+                timestamp INTEGER,
+                stoppage_time INTEGER DEFAULT 0,
+                FOREIGN KEY (match_id) REFERENCES matches (id)
+            )
+        """)
+
+        if has_created_by and has_stoppage_time:
+            cursor.execute("""
+                INSERT INTO events_new (id, match_id, created_by_user_id, type, team, player_id, half, minute, timestamp, stoppage_time)
+                SELECT id, match_id, COALESCE(created_by_user_id, owner_user_id), type, team, player_id, half, minute, timestamp, stoppage_time
+                FROM events
+            """)
+        elif has_created_by:
+            cursor.execute("""
+                INSERT INTO events_new (id, match_id, created_by_user_id, type, team, player_id, half, minute, timestamp, stoppage_time)
+                SELECT id, match_id, COALESCE(created_by_user_id, owner_user_id), type, team, player_id, half, minute, timestamp, 0
+                FROM events
+            """)
+        elif has_stoppage_time:
+            cursor.execute("""
+                INSERT INTO events_new (id, match_id, created_by_user_id, type, team, player_id, half, minute, timestamp, stoppage_time)
+                SELECT id, match_id, owner_user_id, type, team, player_id, half, minute, timestamp, stoppage_time
+                FROM events
+            """)
+        else:
+            cursor.execute("""
+                INSERT INTO events_new (id, match_id, created_by_user_id, type, team, player_id, half, minute, timestamp, stoppage_time)
+                SELECT id, match_id, owner_user_id, type, team, player_id, half, minute, timestamp, 0
+                FROM events
+            """)
+
+        cursor.execute("DROP TABLE events")
+        cursor.execute("ALTER TABLE events_new RENAME TO events")
+
+
 def import_seed_data_if_needed():
     if DB_PATH.exists() and DB_PATH.stat().st_size > 0:
         return False
@@ -408,48 +561,9 @@ def init_db():
     ensure_column(cursor, "matches", "created_by_user_id", "INTEGER")
 
     remove_customer_model_if_present(cursor)
+    remove_owner_columns_if_present(cursor)
 
     ensure_column(cursor, "teams", "team_code", "TEXT")
-
-    if table_has_column(cursor, "matches", "owner_user_id"):
-        cursor.execute(
-            """
-            UPDATE matches
-            SET created_by_user_id = owner_user_id
-            WHERE created_by_user_id IS NULL
-              AND owner_user_id IS NOT NULL
-            """
-        )
-
-    if table_has_column(cursor, "events", "owner_user_id"):
-        cursor.execute(
-            """
-            UPDATE events
-            SET created_by_user_id = owner_user_id
-            WHERE created_by_user_id IS NULL
-              AND owner_user_id IS NOT NULL
-            """
-        )
-
-    if table_has_column(cursor, "teams", "owner_user_id"):
-        cursor.execute(
-            """
-            UPDATE teams
-            SET created_by_user_id = owner_user_id
-            WHERE created_by_user_id IS NULL
-              AND owner_user_id IS NOT NULL
-            """
-        )
-
-    if table_has_column(cursor, "players", "owner_user_id"):
-        cursor.execute(
-            """
-            UPDATE players
-            SET created_by_user_id = owner_user_id
-            WHERE created_by_user_id IS NULL
-              AND owner_user_id IS NOT NULL
-            """
-        )
 
     fallback_user_row = cursor.execute(
         "SELECT id FROM users ORDER BY id ASC LIMIT 1"
