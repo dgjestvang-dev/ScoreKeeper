@@ -6,7 +6,7 @@ export function createClock(halfDurationSeconds) {
     let hasStarted = false;          // ✅ NEW (internal only)
 
     let halfStartTimestamp = null;   // ms since epoch
-    let pausedRemaining = halfDuration;
+    let elapsedSeconds = 0;
 
     function start() {
         if (running) return;
@@ -14,14 +14,13 @@ export function createClock(halfDurationSeconds) {
         hasStarted = true;           // ✅ half now officially started
         running = true;
 
-        halfStartTimestamp =
-            Date.now() - (halfDuration - pausedRemaining) * 1000;
+        halfStartTimestamp = Date.now();
     }
 
     function pause() {
         if (!running) return;
 
-        pausedRemaining = getRemainingSeconds();
+        elapsedSeconds = getElapsedSeconds();
         running = false;
         halfStartTimestamp = null;
     }
@@ -31,7 +30,7 @@ export function createClock(halfDurationSeconds) {
         running = false;
         hasStarted = false;          // ✅ next half has not started yet
         halfStartTimestamp = null;
-        pausedRemaining = halfDuration;
+        elapsedSeconds = 0;
     }
 
     function resetGame() {
@@ -39,28 +38,32 @@ export function createClock(halfDurationSeconds) {
         running = false;
         hasStarted = false;          // ✅ reset start state
         halfStartTimestamp = null;
-        pausedRemaining = halfDuration;
+        elapsedSeconds = 0;
     }
 
     function getRemainingSeconds() {
-        if (!running) {
-            return pausedRemaining;
-        }
-
-        const elapsed = Math.floor(
-            (Date.now() - halfStartTimestamp) / 1000
-        );
-
-        return Math.max(0, halfDuration - elapsed);
+        return Math.max(0, halfDuration - Math.min(getElapsedSeconds(), halfDuration));
     }
 
     function getElapsedSeconds() {
-        return halfDuration - getRemainingSeconds();
+        if (!running) {
+            return elapsedSeconds;
+        }
+
+        const liveElapsed = Math.floor((Date.now() - halfStartTimestamp) / 1000);
+        return elapsedSeconds + liveElapsed;
+    }
+
+    function getAddedSeconds() {
+        return Math.max(0, getElapsedSeconds() - halfDuration);
+    }
+
+    function isInAddedTime() {
+        return hasStarted && getElapsedSeconds() >= halfDuration;
     }
     
     function isExpired() {
-        // ✅ EXPLICITLY require that the half was started
-        return hasStarted && getRemainingSeconds() === 0;
+        return isInAddedTime();
     }
 
     function isRunning() {
@@ -87,8 +90,10 @@ export function createClock(halfDurationSeconds) {
         resetGame,
         getRemainingSeconds,
         getElapsedSeconds,
+        getAddedSeconds,
         getCurrentHalf,
         isRunning,
+        isInAddedTime,
         isExpired
     };
 }

@@ -245,12 +245,13 @@ def remove_customer_model_if_present(cursor):
                 half INTEGER,
                 minute INTEGER,
                 timestamp INTEGER,
+                stoppage_time INTEGER DEFAULT 0,
                 FOREIGN KEY (match_id) REFERENCES matches (id)
             )
         """)
         cursor.execute("""
-            INSERT INTO events_new (id, match_id, owner_user_id, type, team, player_id, half, minute, timestamp)
-            SELECT id, match_id, owner_user_id, type, team, player_id, half, minute, timestamp
+            INSERT INTO events_new (id, match_id, owner_user_id, type, team, player_id, half, minute, timestamp, stoppage_time)
+            SELECT id, match_id, owner_user_id, type, team, player_id, half, minute, timestamp, 0
             FROM events
         """)
         cursor.execute("DROP TABLE events")
@@ -336,6 +337,7 @@ def init_db():
             half INTEGER,
             minute INTEGER,
             timestamp INTEGER,
+            stoppage_time INTEGER DEFAULT 0,
             FOREIGN KEY (match_id) REFERENCES matches (id)
         )
     """)
@@ -385,6 +387,7 @@ def init_db():
     """)
 
     ensure_column(cursor, "events", "owner_user_id", "INTEGER")
+    ensure_column(cursor, "events", "stoppage_time", "INTEGER DEFAULT 0")
     ensure_column(cursor, "users", "first_name", "TEXT")
     ensure_column(cursor, "users", "last_name", "TEXT")
     ensure_column(cursor, "teams", "team_code", "TEXT")
@@ -667,9 +670,9 @@ def create_event():
 
         cursor.execute("""
             INSERT INTO events (
-                match_id, owner_user_id, type, team, player_id, half, minute, timestamp
+                match_id, owner_user_id, type, team, player_id, half, minute, timestamp, stoppage_time
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             match_id,
             user_id,
@@ -678,7 +681,8 @@ def create_event():
             data.get("player_id"),
             data.get("half"),
             data.get("minute"),
-            data.get("timestamp")
+            data.get("timestamp"),
+            1 if data.get("stoppage_time") else 0
         ))
 
         conn.commit()
@@ -1283,7 +1287,8 @@ def save_match_with_events():
                 e.get("player_id"),
                 e.get("half"),
                 e.get("minute"),
-                e.get("timestamp")
+                e.get("timestamp"),
+                1 if e.get("stoppage_time") else 0
             )
             for e in events
         ]
@@ -1291,9 +1296,9 @@ def save_match_with_events():
         if event_data:
             cursor.executemany("""
                 INSERT INTO events (
-                    match_id, owner_user_id, type, team, player_id, half, minute, timestamp
+                    match_id, owner_user_id, type, team, player_id, half, minute, timestamp, stoppage_time
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, event_data)
 
         conn.commit()

@@ -33,6 +33,8 @@ let awayTeamEl;
 let halfValueEl;
 
 let hasStarted = false;
+let halfEnded = false;
+let waitingForSecondHalfStart = false;
 
 // Event‑sourced match data (single source of truth)
 let matchEvents = [];
@@ -128,6 +130,8 @@ export function initStartKamp() {
     // Backend is the only persistence layer; active match state stays in memory.
     matchEvents = [];
     hasStarted = false;
+    halfEnded = false;
+    waitingForSecondHalfStart = false;
 
 
     // Initial render
@@ -163,22 +167,21 @@ requestAnimationFrame(() => {
 
 function reconcileClockState() {
     if (!clock) return;
-
-    if (clock.isExpired() && clock.isRunning()) {
-        clock.pause();
-        stopTicking();
-    }
 }
 
 function onStartStopClick() {
-    reconcileClockState();
-
     if (clock.isRunning()) {
-        clock.pause();
-        stopTicking();
+        if (clock.isInAddedTime()) {
+            endCurrentHalf();
+        } else {
+            clock.pause();
+            stopTicking();
+        }
     } else {
         clock.start();
         hasStarted = true;
+        halfEnded = false;
+        waitingForSecondHalfStart = false;
         startTicking();
     }
     
@@ -187,19 +190,24 @@ function onStartStopClick() {
 
 function updateMatchControls() {
     if (!clock) return;   
-    reconcileClockState();
 
     const running = clock.isRunning();
-    const expired = clock.isExpired();
     const half = clock.getCurrentHalf();
+    const addedTime = clock.isInAddedTime();
 
     // Start / Stop button
-    if (expired && half === 2) {
+    if (halfEnded && half === 2) {
         startStopBtn.disabled = true;
         startStopBtn.querySelector(".label").textContent = "Slutt";
-    } else if (expired && half === 1) {
+    } else if (halfEnded && half === 1) {
         startStopBtn.disabled = true;
         startStopBtn.querySelector(".label").textContent = "Pause";
+    } else if (waitingForSecondHalfStart && half === 2 && !running) {
+        startStopBtn.disabled = false;
+        startStopBtn.querySelector(".label").textContent = "Start 2. omgang";
+    } else if (addedTime && running) {
+        startStopBtn.disabled = false;
+        startStopBtn.querySelector(".label").textContent = "Avslutt omgang";
     } else {
         startStopBtn.disabled = false;
         startStopBtn.querySelector(".label").textContent =
@@ -209,17 +217,14 @@ function updateMatchControls() {
     startStopBtn.classList.toggle("running", running);
 
     // Advance to next half
-    nextHalfBtn.disabled = !(
-        hasStarted &&
-        expired &&
-        !running &&
-        half === 1
-    );
+    nextHalfBtn.disabled = !(halfEnded && half === 1);
+    nextHalfBtn.querySelector(".label").textContent =
+        halfEnded && half === 1 ? "Start 2. omgang" : "start neste omgang";
 
     updateStatControls();
 
     console.log("Match control state", {
-        expired,
+        addedTime,
         running,
         half,
         resetHalfDisabled: nextHalfBtn.disabled
@@ -239,7 +244,11 @@ function formatTime(seconds) {
 
 function renderClock() {
     if (!timeEl) return;
-    timeEl.textContent = formatTime(clock.getRemainingSeconds());
+    if (clock.isInAddedTime()) {
+        timeEl.textContent = `0:00 +${formatTime(clock.getAddedSeconds())}`;
+    } else {
+        timeEl.textContent = formatTime(clock.getRemainingSeconds());
+    }
 }
 
 function startTicking() {
@@ -284,17 +293,23 @@ function renderHalf() {
 }
 
 function onNextHalfClick() {
-    if (
-        clock.getCurrentHalf() !== 1 ||
-        !clock.isExpired() ||
-        clock.isRunning()
-    ) {
+    if (clock.getCurrentHalf() !== 1 || !halfEnded || clock.isRunning()) {
         return;
     }
 
     clock.resetForNextHalf();
+    halfEnded = false;
+    waitingForSecondHalfStart = true;
     renderClock();
     renderHalf();
+    updateMatchControls();
+}
+
+function endCurrentHalf() {
+    halfEnded = true;
+    clock.pause();
+    stopTicking();
+    renderClock();
     updateMatchControls();
 }
 
@@ -354,6 +369,7 @@ function onStatButtonClick(event) {
 
     const half = clock.getCurrentHalf();
     const time = clock.getElapsedSeconds();
+    const stoppageTime = clock.isInAddedTime();
     const timestamp = Date.now();
 
     const homeIsMine = isMyTeamName(matchConfig.homeTeamName);
@@ -369,22 +385,22 @@ function onStatButtonClick(event) {
     }
 
     if (stat === "goals") {
-        handleGoal(team, isMyTeam, half, time, timestamp);
+        handleGoal(team, isMyTeam, half, time, stoppageTime, timestamp);
         return;
     }
 
     if (stat === "yellow_card" || stat === "red_card") {
-        handleCard(team, stat, isMyTeam, half, time, timestamp);
+        handleCard(team, stat, isMyTeam, half, time, stoppageTime, timestamp);
         return;
     }
 
-    handleSimpleStat(team, stat, half, time, timestamp);
+    handleSimpleStat(team, stat, half, time, stoppageTime, timestamp);
 }
 
 
 // 2. MÅL //
 
-function handleGoal(team, isMyTeam, half, time, timestamp) {
+function handleGoal(team, isMyTeam, half, time, stoppageTime, timestamp) {
     const teamId = team === "home" ? homeTeamId ?? null : awayTeamId ?? null;
 
     const baseEvent = {
@@ -395,6 +411,7 @@ function handleGoal(team, isMyTeam, half, time, timestamp) {
         playerId: null,
         half,
         time,
+        stoppageTime,
         timestamp
     };
 
@@ -408,6 +425,7 @@ matchEvents.push({
     playerId: null,
     half,
     time,
+    stoppageTime,
     timestamp
 });
 
@@ -419,6 +437,7 @@ matchEvents.push({
     playerId: null,
     half,
     time,
+    stoppageTime,
     timestamp
 });
 
@@ -477,7 +496,7 @@ if (!isMyTeam) {
 
 // 3. KORT //
 
-function handleCard(team, stat, isMyTeam, half, time, timestamp) {
+function handleCard(team, stat, isMyTeam, half, time, stoppageTime, timestamp) {
     const teamId = team === "home" ? homeTeamId ?? null : awayTeamId ?? null;
 
     const baseEvent = {
@@ -488,6 +507,7 @@ function handleCard(team, stat, isMyTeam, half, time, timestamp) {
         playerId: null,
         half,
         time,
+        stoppageTime,
         timestamp
     };
 
@@ -528,6 +548,7 @@ function handleCard(team, stat, isMyTeam, half, time, timestamp) {
                         playerId,
                         half,
                         time,
+                        stoppageTime,
                         timestamp
                     });
                 }
@@ -546,7 +567,7 @@ function handleCard(team, stat, isMyTeam, half, time, timestamp) {
 
 // 4. SIMLE STATS --> RESTEN (eks corner, skudd)
 
-function handleSimpleStat(team, stat, half, time, timestamp) {
+function handleSimpleStat(team, stat, half, time, stoppageTime, timestamp) {
     const teamId = team === "home" ? homeTeamId ?? null : awayTeamId ?? null;
 
     const baseEvent = {
@@ -557,6 +578,7 @@ function handleSimpleStat(team, stat, half, time, timestamp) {
         playerId: null,
         half,
         time,
+        stoppageTime,
         timestamp
     };
 
@@ -572,6 +594,7 @@ function handleSimpleStat(team, stat, half, time, timestamp) {
             playerId: null,
             half,
             time,
+            stoppageTime,
             timestamp
         });
     }
@@ -643,6 +666,7 @@ function finalizeGoalEvent() {
             playerId: assistId,
             half: baseEvent.half,
             time: baseEvent.time,
+            stoppageTime: baseEvent.stoppageTime,
             timestamp: baseEvent.timestamp
         });
     }
@@ -742,6 +766,7 @@ function onResetMatchClick() {
 
     matchEvents = [];
     hasStarted = false;
+    halfEnded = false;
 
     stopTicking();
     clock.resetGame();
@@ -968,6 +993,7 @@ function mapEventForBackend(event) {
         player_id: event.playerId ?? null,
         half: event.half ?? null,
         minute: toBackendMinute(event.time),
+        stoppage_time: Boolean(event.stoppageTime),
         timestamp: Number.isFinite(Number(event.timestamp))
             ? Number(event.timestamp)
             : Date.now()
