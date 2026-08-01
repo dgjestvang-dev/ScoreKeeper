@@ -157,15 +157,7 @@ def user_owns_team(cursor, user_id, team_id):
         """,
         (user_id, team_id)
     ).fetchone()
-
-    if row:
-        return True
-
-    legacy_owner = cursor.execute(
-        "SELECT 1 FROM teams WHERE id = ? AND owner_user_id = ?",
-        (team_id, user_id)
-    ).fetchone()
-    return legacy_owner is not None
+    return row is not None
 
 
 def remove_customer_model_if_present(cursor):
@@ -196,18 +188,18 @@ def remove_customer_model_if_present(cursor):
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
                 team_code TEXT,
-                owner_user_id INTEGER
+                created_by_user_id INTEGER
             )
         """)
         if has_team_code:
             cursor.execute("""
-                INSERT INTO teams_new (id, name, team_code, owner_user_id)
+                INSERT INTO teams_new (id, name, team_code, created_by_user_id)
                 SELECT id, name, team_code, owner_user_id
                 FROM teams
             """)
         else:
             cursor.execute("""
-                INSERT INTO teams_new (id, name, team_code, owner_user_id)
+                INSERT INTO teams_new (id, name, team_code, created_by_user_id)
                 SELECT id, name, NULL, owner_user_id
                 FROM teams
             """)
@@ -221,12 +213,12 @@ def remove_customer_model_if_present(cursor):
                 team_id INTEGER,
                 name TEXT NOT NULL,
                 shirt_number INTEGER,
-                owner_user_id INTEGER,
+                created_by_user_id INTEGER,
                 FOREIGN KEY (team_id) REFERENCES teams (id)
             )
         """)
         cursor.execute("""
-            INSERT INTO players_new (id, team_id, name, shirt_number, owner_user_id)
+            INSERT INTO players_new (id, team_id, name, shirt_number, created_by_user_id)
             SELECT id, team_id, name, shirt_number, owner_user_id
             FROM players
         """)
@@ -242,11 +234,11 @@ def remove_customer_model_if_present(cursor):
                 away_team_id INTEGER,
                 away_team_name TEXT,
                 date TEXT,
-                owner_user_id INTEGER
+                created_by_user_id INTEGER
             )
         """)
         cursor.execute("""
-            INSERT INTO matches_new (id, home_team_id, home_team_name, away_team_id, away_team_name, date, owner_user_id)
+            INSERT INTO matches_new (id, home_team_id, home_team_name, away_team_id, away_team_name, date, created_by_user_id)
             SELECT id, home_team_id, home_team_name, away_team_id, away_team_name, date, owner_user_id
             FROM matches
         """)
@@ -258,7 +250,7 @@ def remove_customer_model_if_present(cursor):
             CREATE TABLE events_new (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 match_id INTEGER,
-                owner_user_id INTEGER,
+                created_by_user_id INTEGER,
                 type TEXT,
                 team TEXT,
                 player_id TEXT,
@@ -270,7 +262,7 @@ def remove_customer_model_if_present(cursor):
             )
         """)
         cursor.execute("""
-            INSERT INTO events_new (id, match_id, owner_user_id, type, team, player_id, half, minute, timestamp, stoppage_time)
+            INSERT INTO events_new (id, match_id, created_by_user_id, type, team, player_id, half, minute, timestamp, stoppage_time)
             SELECT id, match_id, owner_user_id, type, team, player_id, half, minute, timestamp, 0
             FROM events
         """)
@@ -350,7 +342,7 @@ def init_db():
         CREATE TABLE IF NOT EXISTS events (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             match_id INTEGER,
-            owner_user_id INTEGER,
+            created_by_user_id INTEGER,
             type TEXT,
             team TEXT,
             player_id TEXT,
@@ -367,7 +359,7 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
             team_code TEXT,
-            owner_user_id INTEGER
+            created_by_user_id INTEGER
         )
     """)
 
@@ -389,7 +381,7 @@ def init_db():
             team_id INTEGER,
             name TEXT NOT NULL,
             shirt_number INTEGER,
-            owner_user_id INTEGER,
+            created_by_user_id INTEGER,
             FOREIGN KEY (team_id) REFERENCES teams (id)
         )
     """)
@@ -402,22 +394,62 @@ def init_db():
             away_team_id INTEGER,
             away_team_name TEXT,
             date TEXT,
-            owner_user_id INTEGER
+            created_by_user_id INTEGER
         )
     """)
 
-    ensure_column(cursor, "events", "owner_user_id", "INTEGER")
+    ensure_column(cursor, "events", "created_by_user_id", "INTEGER")
     ensure_column(cursor, "events", "stoppage_time", "INTEGER DEFAULT 0")
     ensure_column(cursor, "users", "first_name", "TEXT")
     ensure_column(cursor, "users", "last_name", "TEXT")
     ensure_column(cursor, "teams", "team_code", "TEXT")
-    ensure_column(cursor, "teams", "owner_user_id", "INTEGER")
-    ensure_column(cursor, "players", "owner_user_id", "INTEGER")
-    ensure_column(cursor, "matches", "owner_user_id", "INTEGER")
+    ensure_column(cursor, "teams", "created_by_user_id", "INTEGER")
+    ensure_column(cursor, "players", "created_by_user_id", "INTEGER")
+    ensure_column(cursor, "matches", "created_by_user_id", "INTEGER")
 
     remove_customer_model_if_present(cursor)
 
     ensure_column(cursor, "teams", "team_code", "TEXT")
+
+    if table_has_column(cursor, "matches", "owner_user_id"):
+        cursor.execute(
+            """
+            UPDATE matches
+            SET created_by_user_id = owner_user_id
+            WHERE created_by_user_id IS NULL
+              AND owner_user_id IS NOT NULL
+            """
+        )
+
+    if table_has_column(cursor, "events", "owner_user_id"):
+        cursor.execute(
+            """
+            UPDATE events
+            SET created_by_user_id = owner_user_id
+            WHERE created_by_user_id IS NULL
+              AND owner_user_id IS NOT NULL
+            """
+        )
+
+    if table_has_column(cursor, "teams", "owner_user_id"):
+        cursor.execute(
+            """
+            UPDATE teams
+            SET created_by_user_id = owner_user_id
+            WHERE created_by_user_id IS NULL
+              AND owner_user_id IS NOT NULL
+            """
+        )
+
+    if table_has_column(cursor, "players", "owner_user_id"):
+        cursor.execute(
+            """
+            UPDATE players
+            SET created_by_user_id = owner_user_id
+            WHERE created_by_user_id IS NULL
+              AND owner_user_id IS NOT NULL
+            """
+        )
 
     fallback_user_row = cursor.execute(
         "SELECT id FROM users ORDER BY id ASC LIMIT 1"
@@ -426,16 +458,16 @@ def init_db():
 
     if fallback_user_id is not None:
         cursor.execute(
-            "UPDATE teams SET owner_user_id = ? WHERE owner_user_id IS NULL",
+            "UPDATE teams SET created_by_user_id = ? WHERE created_by_user_id IS NULL",
             (fallback_user_id,)
         )
 
     cursor.execute(
         """
         INSERT OR IGNORE INTO user_teams (user_id, team_id, role)
-        SELECT owner_user_id, id, 'owner'
+        SELECT created_by_user_id, id, 'owner'
         FROM teams
-        WHERE owner_user_id IS NOT NULL
+        WHERE created_by_user_id IS NOT NULL
         """
     )
 
@@ -452,35 +484,35 @@ def init_db():
     cursor.execute(
         """
         UPDATE events
-        SET owner_user_id = (
-            SELECT owner_user_id FROM matches WHERE matches.id = events.match_id
+        SET created_by_user_id = (
+            SELECT created_by_user_id FROM matches WHERE matches.id = events.match_id
         )
-        WHERE owner_user_id IS NULL
+        WHERE created_by_user_id IS NULL
           AND EXISTS (
               SELECT 1
               FROM matches
               WHERE matches.id = events.match_id
-                AND owner_user_id IS NOT NULL
+                AND created_by_user_id IS NOT NULL
           )
         """,
     )
 
     if fallback_user_id is not None:
         cursor.execute(
-            "UPDATE players SET owner_user_id = ? WHERE owner_user_id IS NULL",
+            "UPDATE players SET created_by_user_id = ? WHERE created_by_user_id IS NULL",
             (fallback_user_id,)
         )
         cursor.execute(
-            "UPDATE matches SET owner_user_id = ? WHERE owner_user_id IS NULL",
+            "UPDATE matches SET created_by_user_id = ? WHERE created_by_user_id IS NULL",
             (fallback_user_id,)
         )
         cursor.execute(
-            "UPDATE events SET owner_user_id = ? WHERE owner_user_id IS NULL",
+            "UPDATE events SET created_by_user_id = ? WHERE created_by_user_id IS NULL",
             (fallback_user_id,)
         )
 
     cursor.execute(
-        "CREATE INDEX IF NOT EXISTS idx_teams_owner ON teams(owner_user_id)"
+        "CREATE INDEX IF NOT EXISTS idx_teams_created_by ON teams(created_by_user_id)"
     )
     cursor.execute(
         "CREATE UNIQUE INDEX IF NOT EXISTS idx_teams_code_unique ON teams(team_code)"
@@ -492,13 +524,13 @@ def init_db():
         "CREATE INDEX IF NOT EXISTS idx_user_teams_team ON user_teams(team_id)"
     )
     cursor.execute(
-        "CREATE INDEX IF NOT EXISTS idx_players_owner ON players(owner_user_id)"
+        "CREATE INDEX IF NOT EXISTS idx_players_created_by ON players(created_by_user_id)"
     )
     cursor.execute(
-        "CREATE INDEX IF NOT EXISTS idx_matches_owner ON matches(owner_user_id)"
+        "CREATE INDEX IF NOT EXISTS idx_matches_created_by ON matches(created_by_user_id)"
     )
     cursor.execute(
-        "CREATE INDEX IF NOT EXISTS idx_events_owner ON events(owner_user_id)"
+        "CREATE INDEX IF NOT EXISTS idx_events_created_by ON events(created_by_user_id)"
     )
     cursor.execute(
         "CREATE INDEX IF NOT EXISTS idx_events_match ON events(match_id)"
@@ -680,7 +712,7 @@ def create_event():
                 LEFT JOIN user_teams ut
                     ON ut.team_id = m.home_team_id AND ut.user_id = ?
                 WHERE m.id = ?
-                  AND (ut.user_id IS NOT NULL OR m.owner_user_id = ?)
+                                    AND (ut.user_id IS NOT NULL OR m.created_by_user_id = ?)
                 """,
                 (user_id, match_id, user_id)
             ).fetchone()
@@ -690,7 +722,7 @@ def create_event():
 
         cursor.execute("""
             INSERT INTO events (
-                match_id, owner_user_id, type, team, player_id, half, minute, timestamp, stoppage_time
+                match_id, created_by_user_id, type, team, player_id, half, minute, timestamp, stoppage_time
             )
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
@@ -731,7 +763,7 @@ def get_events():
         LEFT JOIN user_teams ut
             ON ut.team_id = m.home_team_id AND ut.user_id = ?
         WHERE ut.user_id IS NOT NULL
-           OR e.owner_user_id = ?
+              OR e.created_by_user_id = ?
         ORDER BY e.id ASC
         """,
         (user_id, user_id)
@@ -764,7 +796,7 @@ def create_team():
         team_code = generate_team_code(cursor)
 
         cursor.execute("""
-            INSERT INTO teams (name, team_code, owner_user_id)
+            INSERT INTO teams (name, team_code, created_by_user_id)
             VALUES (?, ?, ?)
         """, (team_name, team_code, user_id))
 
@@ -972,7 +1004,7 @@ def create_player():
         return jsonify({"error": "team not found for user"}), 404
 
     cursor.execute("""
-        INSERT INTO players (team_id, name, shirt_number, owner_user_id)
+        INSERT INTO players (team_id, name, shirt_number, created_by_user_id)
         VALUES (?, ?, ?, ?)
     """, (
         team_id,
@@ -1154,7 +1186,7 @@ def create_match():
             away_team_id,
             away_team_name,
             date,
-            owner_user_id
+            created_by_user_id
         )
         VALUES (?, ?, ?, ?, ?, ?)
     """, (
@@ -1188,7 +1220,7 @@ def get_matches():
         LEFT JOIN user_teams ut
             ON ut.team_id = m.home_team_id AND ut.user_id = ?
         WHERE ut.user_id IS NOT NULL
-           OR m.owner_user_id = ?
+              OR m.created_by_user_id = ?
         ORDER BY m.id DESC
         """,
         (user_id, user_id)
@@ -1219,7 +1251,7 @@ def delete_match(match_id):
             LEFT JOIN user_teams ut
                 ON ut.team_id = m.home_team_id AND ut.user_id = ?
             WHERE m.id = ?
-              AND (ut.user_id IS NOT NULL OR m.owner_user_id = ?)
+                            AND (ut.user_id IS NOT NULL OR m.created_by_user_id = ?)
             """,
             (user_id, match_id, user_id)
         ).fetchone()
@@ -1284,7 +1316,7 @@ def save_match_with_events():
                 away_team_id,
                 away_team_name,
                 date,
-                owner_user_id
+                created_by_user_id
             )
             VALUES (?, ?, ?, ?, ?, ?)
         """, (
@@ -1316,7 +1348,7 @@ def save_match_with_events():
         if event_data:
             cursor.executemany("""
                 INSERT INTO events (
-                    match_id, owner_user_id, type, team, player_id, half, minute, timestamp, stoppage_time
+                    match_id, created_by_user_id, type, team, player_id, half, minute, timestamp, stoppage_time
                 )
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, event_data)

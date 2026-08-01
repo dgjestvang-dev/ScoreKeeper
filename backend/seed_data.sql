@@ -2,7 +2,7 @@ BEGIN TRANSACTION;
 CREATE TABLE events (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             match_id INTEGER,
-            owner_user_id INTEGER,
+            created_by_user_id INTEGER,
             type TEXT,
             team TEXT,
             player_id TEXT,
@@ -49,7 +49,7 @@ CREATE TABLE matches (
             away_team_id INTEGER,
             away_team_name TEXT,
             date TEXT,
-            owner_user_id INTEGER
+            created_by_user_id INTEGER
         );
 INSERT INTO "matches" VALUES(7,1,'Frisk Asker G13',NULL,'Bærum','2026-07-21',1);
 CREATE TABLE players (
@@ -57,7 +57,7 @@ CREATE TABLE players (
             team_id INTEGER,
             name TEXT NOT NULL,
             shirt_number INTEGER,
-            owner_user_id INTEGER,
+            created_by_user_id INTEGER,
             FOREIGN KEY (team_id) REFERENCES teams (id)
         );
 INSERT INTO "players" VALUES(1,1,'Vini',25,1);
@@ -77,7 +77,7 @@ INSERT INTO "players" VALUES(20,2,'Vini',13,1);
 CREATE TABLE teams (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
-            owner_user_id INTEGER
+            created_by_user_id INTEGER
         );
 INSERT INTO "teams" VALUES(1,'Frisk Asker G13',1);
 INSERT INTO "teams" VALUES(2,'Frisk Asker G12',1);
@@ -91,10 +91,10 @@ CREATE TABLE users (
             created_at TEXT DEFAULT CURRENT_TIMESTAMP
         );
 INSERT INTO "users" VALUES(1,'danie','Danie','owner',1,'2026-07-18 17:26:06');
-CREATE INDEX idx_teams_owner ON teams(owner_user_id);
-CREATE INDEX idx_players_owner ON players(owner_user_id);
-CREATE INDEX idx_matches_owner ON matches(owner_user_id);
-CREATE INDEX idx_events_owner ON events(owner_user_id);
+CREATE INDEX idx_teams_created_by ON teams(created_by_user_id);
+CREATE INDEX idx_players_created_by ON players(created_by_user_id);
+CREATE INDEX idx_matches_created_by ON matches(created_by_user_id);
+CREATE INDEX idx_events_created_by ON events(created_by_user_id);
 CREATE INDEX idx_events_match ON events(match_id);
 DELETE FROM "sqlite_sequence";
 INSERT INTO "sqlite_sequence" VALUES('teams',20);
