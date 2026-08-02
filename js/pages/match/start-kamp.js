@@ -473,7 +473,10 @@ if (!isMyTeam) {
     openPlayerAssign(
         playersWithOwnGoal,
         (playerId) => {
-            if (!playerId) return;
+            if (!playerId) {
+                rollbackGoalEvent(team);
+                return;
+            }
 
             if (playerId === "__OWN_GOAL__") {
                 baseEvent.playerId = null;
@@ -675,6 +678,27 @@ function finalizeGoalEvent() {
     renderStatsSummary();
 
     pendingGoalEvent = null;
+}
+
+function rollbackGoalEvent(team) {
+    function removeLast(type) {
+        for (let i = matchEvents.length - 1; i >= 0; i--) {
+            const event = matchEvents[i];
+            if (event.type === type && event.team === team) {
+                matchEvents.splice(i, 1);
+                return;
+            }
+        }
+    }
+
+    removeLast("goals");
+    removeLast("shots_target");
+    removeLast("shots_total");
+
+    pendingGoalEvent = null;
+
+    renderScore();
+    renderStatsSummary();
 }
 
 function finalizeOwnGoal(baseEvent) {
