@@ -1007,12 +1007,7 @@ font-size: 1.1rem;
     bottom: calc(12px + env(safe-area-inset-bottom));
     z-index: 8;
     padding-top: 10px;
-    background: linear-gradient(
-        to top,
-        rgba(255, 234, 223, 0.98) 0%,
-        rgba(255, 234, 223, 0.92) 70%,
-        rgba(255, 234, 223, 0) 100%
-    );
+    background: transparent;
 }
 
 
