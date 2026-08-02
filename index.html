@@ -312,6 +312,24 @@
                                 <datalist id="team-options"></datalist>
 
                                 <div class="field">
+                                    <label for="game-type">Type kamp</label>
+                                    <input type="text" id="game-type" list="game-types" autocomplete="off" name="game-type">
+                                </div>
+
+                                <datalist id="game-types">
+                                    <option value="Seriekamp"></option>
+                                    <option value="Cupkamp"></option>
+                                    <option value="Treningskamp"></option>
+                                    <option value="Annet"></option>
+                                </datalist>
+
+                                <div class="field">
+                                    <label for="game-comment">Kamp merknad</label>
+                                    <input type="text" id="game-comment" name="game-comment">
+                                </div>
+
+
+                                <div class="field">
                                     <label for="gametime">Omgangens lengde</label>
                                     <input type="number" id="gametime" name="gametime" placeholder="35">
                                 </div>

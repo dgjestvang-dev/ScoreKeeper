@@ -5,19 +5,27 @@ let startMatchBtn;
 let gametimeInput;
 let homeInput;
 let awayInput;
+let gameTypeInput;
+let gameCommentInput;
 
 export async function initKampdag() {
     startMatchBtn = document.querySelector('#kampdag [data-nav="start-kamp"]');
     gametimeInput = document.getElementById("gametime");
     homeInput = document.getElementById("home-team");
     awayInput = document.getElementById("away-team");
+    gameTypeInput = document.getElementById("game-type");
+    gameCommentInput = document.getElementById("game-comment");
 
-    if (!startMatchBtn || !gametimeInput || !homeInput || !awayInput) {
+    if (!startMatchBtn || !gametimeInput || !homeInput || !awayInput || !gameTypeInput || !gameCommentInput) {
         console.error("Kampdag elements not found");
         return;
     }
 
     await populateTeamOptions();
+
+    gameTypeInput.value = matchConfig.gameType || "";
+    gameCommentInput.value = matchConfig.gameComment || "";
+
     startMatchBtn.addEventListener("click", onStartMatchClick);
 }
 
@@ -52,6 +60,8 @@ function onStartMatchClick() {
     const minutes = Number(gametimeInput.value);
     const homeTeamName = homeInput.value.trim();
     const awayTeamName = awayInput.value.trim();
+    const gameType = gameTypeInput.value.trim();
+    const gameComment = gameCommentInput.value.trim();
 
     if (!minutes || minutes <= 0) {
         alert("Ugyldig omgangstid");
@@ -76,6 +86,8 @@ function onStartMatchClick() {
     matchConfig.gametimeMinutes = minutes;
     matchConfig.homeTeamName = homeTeamName;
     matchConfig.awayTeamName = awayTeamName;
+    matchConfig.gameType = gameType;
+    matchConfig.gameComment = gameComment;
 
     const teams = getTeams();
     const homeMatch = Object.values(teams).find(t =>

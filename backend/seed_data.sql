@@ -49,6 +49,8 @@ CREATE TABLE matches (
             away_team_id INTEGER,
             away_team_name TEXT,
             date TEXT,
+            game_type TEXT,
+            game_comment TEXT,
             created_by_user_id INTEGER
         );
 INSERT INTO "matches" VALUES(7,1,'Frisk Asker G13',NULL,'Bærum','2026-07-21',1);

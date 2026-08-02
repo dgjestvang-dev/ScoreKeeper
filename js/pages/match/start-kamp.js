@@ -1009,6 +1009,8 @@ function buildSaveMatchPayload() {
             home_team_name: matchConfig.homeTeamName,
             away_team_id: awayTeamId,
             away_team_name: matchConfig.awayTeamName,
+            game_type: matchConfig.gameType,
+            game_comment: matchConfig.gameComment,
             date: today
         },
         events: matchEvents.map(mapEventForBackend)

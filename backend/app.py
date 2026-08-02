@@ -547,6 +547,8 @@ def init_db():
             away_team_id INTEGER,
             away_team_name TEXT,
             date TEXT,
+            game_type TEXT,
+            game_comment TEXT,
             created_by_user_id INTEGER
         )
     """)
@@ -559,6 +561,8 @@ def init_db():
     ensure_column(cursor, "teams", "created_by_user_id", "INTEGER")
     ensure_column(cursor, "players", "created_by_user_id", "INTEGER")
     ensure_column(cursor, "matches", "created_by_user_id", "INTEGER")
+    ensure_column(cursor, "matches", "game_type", "TEXT")
+    ensure_column(cursor, "matches", "game_comment", "TEXT")
 
     remove_customer_model_if_present(cursor)
     remove_owner_columns_if_present(cursor)
@@ -1300,15 +1304,19 @@ def create_match():
             away_team_id,
             away_team_name,
             date,
+            game_type,
+            game_comment,
             created_by_user_id
         )
-        VALUES (?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         home_team_id,
         data.get("home_team_name"),
         data.get("away_team_id"),
         data.get("away_team_name"),
         data.get("date"),
+        data.get("game_type"),
+        data.get("game_comment"),
         user_id
     ))
 
@@ -1430,15 +1438,19 @@ def save_match_with_events():
                 away_team_id,
                 away_team_name,
                 date,
+                game_type,
+                game_comment,
                 created_by_user_id
             )
-            VALUES (?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             home_team_id,
             match.get("home_team_name"),
             match.get("away_team_id"),
             match.get("away_team_name"),
             match.get("date"),
+            match.get("game_type"),
+            match.get("game_comment"),
             user_id
         ))
 
