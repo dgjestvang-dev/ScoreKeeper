@@ -887,6 +887,31 @@ function toDisplayMinuteFromEvent(event) {
     return toDisplayMinuteFromHalf(event?.half, minuteInHalf);
 }
 
+function formatDisplayMinuteFromEvent(event) {
+    const minute = toDisplayMinuteFromEvent(event);
+    const stoppage = Boolean(event?.stoppageTime);
+    const halfDurationMinutesRaw = Number(matchConfig.gametimeMinutes);
+    const halfDurationMinutes = Number.isFinite(halfDurationMinutesRaw) && halfDurationMinutesRaw > 0
+        ? Math.floor(halfDurationMinutesRaw)
+        : null;
+
+    if (!stoppage || !halfDurationMinutes) {
+        return `${minute}'`;
+    }
+
+    const safeHalf = Number.isFinite(Number(event?.half)) && Number(event.half) > 0
+        ? Math.floor(Number(event.half))
+        : 1;
+    const seconds = Number(event?.time);
+    const minuteInHalf = Number.isFinite(seconds) && seconds >= 0
+        ? Math.floor(seconds / 60) + 1
+        : 1;
+    const baseMinute = safeHalf * halfDurationMinutes;
+    const addedMinute = Math.max(1, minuteInHalf - halfDurationMinutes);
+
+    return `${baseMinute}+${addedMinute}'`;
+}
+
 function buildChronologicalTimelineForSummary() {
     const timelineEvents = matchEvents
         .filter(e => e.type === "goals" || e.type === "yellow_card" || e.type === "red_card")
@@ -928,7 +953,7 @@ function buildChronologicalTimelineForSummary() {
 
             timeline.push({
                 kind: "goal",
-                minute: `${toDisplayMinuteFromEvent(event)}'`,
+                minute: formatDisplayMinuteFromEvent(event),
                 score: `${homeGoals}–${awayGoals}`,
                 player: playerName,
                 assist: assistEvent
@@ -941,7 +966,7 @@ function buildChronologicalTimelineForSummary() {
         timeline.push({
             kind: "card",
             icon: event.type === "red_card" ? "🟥" : "🟨",
-            minute: `${toDisplayMinuteFromEvent(event)}'`,
+            minute: formatDisplayMinuteFromEvent(event),
             player: getPlayerName(event.playerId, event.team)
         });
     }
@@ -980,7 +1005,7 @@ function formatGoalsWithPlayers() {
             awayGoals++;
         }
 
-        const minute = `${toDisplayMinuteFromEvent(event)}'`;
+        const minute = formatDisplayMinuteFromEvent(event);
         const score = `${homeGoals}–${awayGoals}`;        
         
         // 🔍 Finn eventuell assist for dette målet
@@ -1037,7 +1062,7 @@ function formatCardsWithPlayers() {
         // Marker dem som brukt
         sameMoment.forEach(e => usedEventIds.add(e.id));
 
-        const minute = `${toDisplayMinuteFromEvent(event)}'`;
+        const minute = formatDisplayMinuteFromEvent(event);
         const yellows = sameMoment.filter(e => e.type === "yellow_card").length;
         const reds = sameMoment.filter(e => e.type === "red_card").length;
 

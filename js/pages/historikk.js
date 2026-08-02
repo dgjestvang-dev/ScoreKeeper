@@ -28,6 +28,27 @@ function toDisplayMinute(event, halfDurationMinutes) {
     return minuteInHalf + ((half - 1) * halfDurationMinutes);
 }
 
+function formatDisplayMinute(event, halfDurationMinutes) {
+    const minute = toDisplayMinute(event, halfDurationMinutes);
+    const stoppage = Boolean(event?.stoppage_time);
+
+    if (!stoppage || !Number.isFinite(halfDurationMinutes) || halfDurationMinutes <= 0) {
+        return `${minute}'`;
+    }
+
+    const safeHalf = Number.isFinite(Number(event?.half)) && Number(event.half) > 0
+        ? Math.floor(Number(event.half))
+        : 1;
+    const minuteInHalfRaw = Number(event?.minute);
+    const minuteInHalf = Number.isFinite(minuteInHalfRaw) && minuteInHalfRaw > 0
+        ? Math.floor(minuteInHalfRaw)
+        : 1;
+    const baseMinute = safeHalf * halfDurationMinutes;
+    const addedMinute = Math.max(1, minuteInHalf - halfDurationMinutes);
+
+    return `${baseMinute}+${addedMinute}'`;
+}
+
 function buildChronologicalTimeline(events, playersById, halfDurationMinutes) {
     const timelineEvents = events
         .filter(e => e.type === "goals" || e.type === "yellow_card" || e.type === "red_card")
@@ -65,7 +86,7 @@ function buildChronologicalTimeline(events, playersById, halfDurationMinutes) {
 
             timeline.push({
                 kind: "goal",
-                minute: `${toDisplayMinute(event, halfDurationMinutes)}'`,
+                minute: formatDisplayMinute(event, halfDurationMinutes),
                 score: `${homeGoals}–${awayGoals}`,
                 player: toPlayerLabel(event.player_id, playersById),
                 assist: assist ? `(${toPlayerLabel(assist.player_id, playersById)})` : ""
@@ -76,7 +97,7 @@ function buildChronologicalTimeline(events, playersById, halfDurationMinutes) {
         timeline.push({
             kind: "card",
             icon: event.type === "red_card" ? "🟥" : "🟨",
-            minute: `${toDisplayMinute(event, halfDurationMinutes)}'`,
+            minute: formatDisplayMinute(event, halfDurationMinutes),
             player: toPlayerLabel(event.player_id, playersById)
         });
     }
@@ -120,7 +141,7 @@ function formatGoals(events, playersById, halfDurationMinutes) {
             e.timestamp === goal.timestamp
         );
 
-        const minuteText = `${toDisplayMinute(goal, halfDurationMinutes)}'`;
+        const minuteText = formatDisplayMinute(goal, halfDurationMinutes);
         const scoreText = `${homeGoals}–${awayGoals}`;
         const playerText = toPlayerLabel(goal.player_id, playersById);
         const assistText = assist ? ` (${toPlayerLabel(assist.player_id, playersById)})` : "";
@@ -144,7 +165,7 @@ function formatCards(events, playersById, halfDurationMinutes) {
 
     return cards.map(card => {
         const symbol = card.type === "red_card" ? "🟥" : "🟨";
-        return `${toDisplayMinute(card, halfDurationMinutes)}'   ${symbol}   ${toPlayerLabel(card.player_id, playersById)}`;
+        return `${formatDisplayMinute(card, halfDurationMinutes)}   ${symbol}   ${toPlayerLabel(card.player_id, playersById)}`;
     });
 }
 
