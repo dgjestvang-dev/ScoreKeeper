@@ -1269,11 +1269,11 @@ font-size: 1.1rem;
 /* Pynt av spillerlister */
 
 .player-list {
-    list-style: none;
-    padding: 0 8px;    padding: 0;
+    padding: 0;
     background: #ffd1a8;
     border-radius: 10px;
     font-weight: 500;
+    overflow: hidden;
 }
 
 .player-list .empty {
@@ -1286,6 +1286,53 @@ font-size: 1.1rem;
 
 .player-item {
     padding: 10px 14px;
+}
+
+.player-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+
+.player-table th,
+.player-table td {
+    padding: 10px 8px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+.player-table thead th {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #4b5563;
+    background: rgba(255, 255, 255, 0.35);
+}
+
+.player-table thead th:first-child,
+.player-table td:first-child {
+    text-align: left;
+    width: 56%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.player-table thead th:not(:first-child),
+.player-cell-stat {
+    text-align: center;
+    width: 11%;
+}
+
+.player-row {
+    cursor: pointer;
+}
+
+.player-row:active {
+    background: rgba(246, 113, 0, 0.14);
+}
+
+.player-row:last-child td {
+    border-bottom: none;
 }
 
 
