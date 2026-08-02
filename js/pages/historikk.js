@@ -1,11 +1,14 @@
 import { navigateTo } from "../navigation.js";
 import { apiUrl } from "../config/api.js";
 
+const UNKNOWN_PLAYER_ID = "__UNKNOWN_PLAYER__";
+
 function toPlayerLabel(playerId, playersById) {
-    if (!playerId) return "(Ukjent spiller)";
+    if (playerId === UNKNOWN_PLAYER_ID) return "Ukjent spiller";
+    if (!playerId) return "Motstander";
 
     const player = playersById.get(Number(playerId)) || playersById.get(playerId);
-    if (!player) return "(Ikke angitt spiller)";
+    if (!player) return "Motstander";
 
     return `#${player.shirt_number ?? "?"} ${player.name}`;
 }

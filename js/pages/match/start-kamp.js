@@ -11,6 +11,9 @@ import { generateId } from "../../utils.js";
 import { getTeams, getPlayersForTeam } from "../../core/teams.js";
 import { openPlayerAssign } from "../../components/player-assign-ui.js";
 
+const OWN_GOAL_PLAYER_ID = "__OWN_GOAL__";
+const UNKNOWN_PLAYER_ID = "__UNKNOWN_PLAYER__";
+
 
 
 
@@ -466,8 +469,9 @@ if (!isMyTeam) {
     const players = getPlayersForTeam(teamId) || [];
 
     const playersWithOwnGoal = [
-        { id: "__OWN_GOAL__", name: "Selvmål", shirt: "" },
-        ...players
+        { id: OWN_GOAL_PLAYER_ID, name: "Selvmål", shirt: "" },
+        ...players,
+        { id: UNKNOWN_PLAYER_ID, name: "Ukjent spiller", shirt: "" }
     ];
 
     openPlayerAssign(
@@ -478,7 +482,7 @@ if (!isMyTeam) {
                 return;
             }
 
-            if (playerId === "__OWN_GOAL__") {
+            if (playerId === OWN_GOAL_PLAYER_ID) {
                 baseEvent.playerId = null;
                 baseEvent.isOwnGoal = true;
                 finalizeOwnGoal(baseEvent);
@@ -525,8 +529,13 @@ function handleCard(team, stat, isMyTeam, half, time, stoppageTime, timestamp) {
         (getPlayersForTeam(teamId) || [])
         .filter(p => !hasRedCard(p.id, team));
 
+    const teamPlayersWithUnknown = [
+        ...teamPlayers,
+        { id: UNKNOWN_PLAYER_ID, name: "Ukjent spiller", shirt: "" }
+    ];
+
     openPlayerAssign(
-        teamPlayers,
+        teamPlayersWithUnknown,
         (playerId) => {
             if (!playerId) {
                 matchEvents.pop();
@@ -643,7 +652,10 @@ function saveAndRender() {
 
 function openAssistAssign(players, scorerId) {
     // Filtrer bort målscorer
-    const assistPlayers = players.filter(p => p.id !== scorerId);
+    const assistPlayers = [
+        ...players.filter(p => p.id !== scorerId),
+        { id: UNKNOWN_PLAYER_ID, name: "Ukjent spiller", shirt: "" }
+    ];
 
     openPlayerAssign(assistPlayers, (assistId) => {
         // assist er valgfri
@@ -844,6 +856,10 @@ function formatStatLine(label, type) {
 
 
 function getPlayerName(playerId, team) {
+    if (playerId === UNKNOWN_PLAYER_ID) {
+        return "Ukjent spiller";
+    }
+
     if (!playerId) {
         const teamName =
             team === "home"
@@ -858,7 +874,7 @@ function getPlayerName(playerId, team) {
         getPlayersForTeam(homeTeamId)?.find(p => p.id === playerId) ||
         getPlayersForTeam(awayTeamId)?.find(p => p.id === playerId);
 
-    if (!player) return "(Ikke angitt spiller)";
+    if (!player) return "Motstander";
 
     return `#${player.shirt} ${player.name}`;
 }

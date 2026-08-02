@@ -28,7 +28,8 @@ export function openPlayerAssign(players, onSelect, options = {}) {
   players.forEach(player => {
     const btn = document.createElement("button");
     btn.type = "button";
-    btn.textContent = `#${player.shirt} ${player.name}`;
+    const hasShirt = player.shirt !== undefined && player.shirt !== null && `${player.shirt}`.trim() !== "";
+    btn.textContent = hasShirt ? `#${player.shirt} ${player.name}` : `${player.name}`;
 
     btn.addEventListener("click", () => {
       closePlayerAssign();
