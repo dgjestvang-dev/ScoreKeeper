@@ -152,9 +152,6 @@ async function loadPlayerStatsForTeam(teamId, players) {
             { matches: 0, goals: 0, assists: 0, yellowCard: 0, redCard: 0 }
         ])
     );
-    const playerMatchIds = new Map(
-        (players || []).map(player => [String(player.id), new Set()])
-    );
 
     try {
         const [matchesRes, eventsRes] = await Promise.all([
@@ -181,6 +178,11 @@ async function loadPlayerStatsForTeam(teamId, players) {
                 .map(match => Number(match.id))
         );
 
+        const totalTeamMatches = relevantMatchIds.size;
+        for (const current of defaultStats.values()) {
+            current.matches = totalTeamMatches;
+        }
+
         for (const event of Array.isArray(events) ? events : []) {
             const matchId = Number(event.match_id);
             if (!relevantMatchIds.has(matchId)) continue;
@@ -191,7 +193,6 @@ async function loadPlayerStatsForTeam(teamId, players) {
             const key = String(playerId);
             const current = defaultStats.get(key);
             if (!current) continue;
-            playerMatchIds.get(key)?.add(matchId);
 
             if (event.type === "goals") {
                 current.goals += 1;
@@ -202,12 +203,6 @@ async function loadPlayerStatsForTeam(teamId, players) {
             } else if (event.type === "red_card") {
                 current.redCard += 1;
             }
-        }
-
-        for (const [key, matchIds] of playerMatchIds.entries()) {
-            const current = defaultStats.get(key);
-            if (!current) continue;
-            current.matches = matchIds.size;
         }
 
         return defaultStats;
