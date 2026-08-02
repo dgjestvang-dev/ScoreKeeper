@@ -863,6 +863,92 @@ function getPlayerName(playerId, team) {
     return `#${player.shirt} ${player.name}`;
 }
 
+function toDisplayMinuteFromHalf(half, minuteInHalf) {
+    const safeHalf = Number.isFinite(Number(half)) && Number(half) > 0
+        ? Math.floor(Number(half))
+        : 1;
+    const safeMinuteInHalf = Number.isFinite(Number(minuteInHalf)) && Number(minuteInHalf) > 0
+        ? Math.floor(Number(minuteInHalf))
+        : 1;
+
+    const halfDurationMinutes = Number(matchConfig.gametimeMinutes);
+    if (!Number.isFinite(halfDurationMinutes) || halfDurationMinutes <= 0) {
+        return safeMinuteInHalf;
+    }
+
+    return safeMinuteInHalf + ((safeHalf - 1) * Math.floor(halfDurationMinutes));
+}
+
+function toDisplayMinuteFromEvent(event) {
+    const seconds = Number(event?.time);
+    const minuteInHalf = Number.isFinite(seconds) && seconds >= 0
+        ? Math.floor(seconds / 60) + 1
+        : 1;
+    return toDisplayMinuteFromHalf(event?.half, minuteInHalf);
+}
+
+function buildChronologicalTimelineForSummary() {
+    const timelineEvents = matchEvents
+        .filter(e => e.type === "goals" || e.type === "yellow_card" || e.type === "red_card")
+        .sort((a, b) => {
+            if ((a.half ?? 0) !== (b.half ?? 0)) return (a.half ?? 0) - (b.half ?? 0);
+            if ((a.time ?? 0) !== (b.time ?? 0)) return (a.time ?? 0) - (b.time ?? 0);
+            return (a.timestamp ?? 0) - (b.timestamp ?? 0);
+        });
+
+    const timeline = [];
+    let homeGoals = 0;
+    let awayGoals = 0;
+    let currentHalf = null;
+
+    for (const event of timelineEvents) {
+        if (currentHalf !== null && event.half !== currentHalf) {
+            timeline.push({ kind: "pause" });
+        }
+        currentHalf = event.half;
+
+        if (event.type === "goals") {
+            if (event.team === "home") {
+                homeGoals++;
+            } else {
+                awayGoals++;
+            }
+
+            const assistEvent = matchEvents.find(e =>
+                e.type === "assists" &&
+                e.team === event.team &&
+                e.half === event.half &&
+                e.time === event.time &&
+                e.timestamp === event.timestamp
+            );
+
+            const playerName = event.isOwnGoal
+                ? "Selvmål"
+                : getPlayerName(event.playerId, event.team);
+
+            timeline.push({
+                kind: "goal",
+                minute: `${toDisplayMinuteFromEvent(event)}'`,
+                score: `${homeGoals}–${awayGoals}`,
+                player: playerName,
+                assist: assistEvent
+                    ? `(${getPlayerName(assistEvent.playerId, assistEvent.team)})`
+                    : ""
+            });
+            continue;
+        }
+
+        timeline.push({
+            kind: "card",
+            icon: event.type === "red_card" ? "🟥" : "🟨",
+            minute: `${toDisplayMinuteFromEvent(event)}'`,
+            player: getPlayerName(event.playerId, event.team)
+        });
+    }
+
+    return timeline;
+}
+
 function formatGoalsWithPlayers() {
     const goalEvents = matchEvents
         .filter(e => e.type === "goals")
@@ -894,7 +980,7 @@ function formatGoalsWithPlayers() {
             awayGoals++;
         }
 
-        const minute = Math.floor(event.time / 60) + 1 + "'";
+        const minute = `${toDisplayMinuteFromEvent(event)}'`;
         const score = `${homeGoals}–${awayGoals}`;        
         
         // 🔍 Finn eventuell assist for dette målet
@@ -951,7 +1037,7 @@ function formatCardsWithPlayers() {
         // Marker dem som brukt
         sameMoment.forEach(e => usedEventIds.add(e.id));
 
-        const minute = Math.floor(event.time / 60) + 1 + "'";
+        const minute = `${toDisplayMinuteFromEvent(event)}'`;
         const yellows = sameMoment.filter(e => e.type === "yellow_card").length;
         const reds = sameMoment.filter(e => e.type === "red_card").length;
 
@@ -990,6 +1076,7 @@ export function buildMatchSummaryParts() {
     
     return {
         header: `${home} - ${away}: ${homeFT} – ${awayFT}  (HT: ${homeHT} – ${awayHT})`,
+        timeline: buildChronologicalTimelineForSummary(),
         events: formatGoalsWithPlayers().split("\n"),
         cards: formatCardsWithPlayers().split("\n"),
         stats: [
@@ -1035,6 +1122,7 @@ function buildSaveMatchPayload() {
             away_team_name: matchConfig.awayTeamName,
             game_type: matchConfig.gameType,
             game_comment: matchConfig.gameComment,
+            half_duration_minutes: matchConfig.gametimeMinutes,
             date: today
         },
         events: matchEvents.map(mapEventForBackend)

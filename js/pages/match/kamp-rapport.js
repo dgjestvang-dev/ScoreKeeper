@@ -26,7 +26,81 @@ function formatStatLine(events, label, type) {
     return `${label}: ${homeFull} – ${awayFull} (HT: ${homeHT} – ${awayHT})`;
 }
 
-function formatGoals(events, playersById) {
+function toDisplayMinute(event, halfDurationMinutes) {
+    const minuteInHalfRaw = Number(event?.minute);
+    const minuteInHalf = Number.isFinite(minuteInHalfRaw) && minuteInHalfRaw > 0
+        ? Math.floor(minuteInHalfRaw)
+        : 1;
+
+    const halfRaw = Number(event?.half);
+    const half = Number.isFinite(halfRaw) && halfRaw > 0
+        ? Math.floor(halfRaw)
+        : 1;
+
+    if (!Number.isFinite(halfDurationMinutes) || halfDurationMinutes <= 0) {
+        return minuteInHalf;
+    }
+
+    return minuteInHalf + ((half - 1) * halfDurationMinutes);
+}
+
+function buildChronologicalTimeline(events, playersById, halfDurationMinutes) {
+    const timelineEvents = events
+        .filter(e => e.type === "goals" || e.type === "yellow_card" || e.type === "red_card")
+        .sort((a, b) => {
+            if ((a.half ?? 0) !== (b.half ?? 0)) return (a.half ?? 0) - (b.half ?? 0);
+            if ((a.minute ?? 0) !== (b.minute ?? 0)) return (a.minute ?? 0) - (b.minute ?? 0);
+            return (a.timestamp ?? 0) - (b.timestamp ?? 0);
+        });
+
+    const timeline = [];
+    let homeGoals = 0;
+    let awayGoals = 0;
+    let currentHalf = null;
+
+    for (const event of timelineEvents) {
+        if (currentHalf !== null && event.half !== currentHalf) {
+            timeline.push({ kind: "pause" });
+        }
+        currentHalf = event.half;
+
+        if (event.type === "goals") {
+            if (event.team === "home") {
+                homeGoals++;
+            } else {
+                awayGoals++;
+            }
+
+            const assist = events.find(e =>
+                e.type === "assists" &&
+                e.team === event.team &&
+                e.half === event.half &&
+                e.minute === event.minute &&
+                e.timestamp === event.timestamp
+            );
+
+            timeline.push({
+                kind: "goal",
+                minute: `${toDisplayMinute(event, halfDurationMinutes)}'`,
+                score: `${homeGoals}–${awayGoals}`,
+                player: toPlayerLabel(event.player_id, playersById),
+                assist: assist ? `(${toPlayerLabel(assist.player_id, playersById)})` : ""
+            });
+            continue;
+        }
+
+        timeline.push({
+            kind: "card",
+            icon: event.type === "red_card" ? "🟥" : "🟨",
+            minute: `${toDisplayMinute(event, halfDurationMinutes)}'`,
+            player: toPlayerLabel(event.player_id, playersById)
+        });
+    }
+
+    return timeline;
+}
+
+function formatGoals(events, playersById, halfDurationMinutes) {
     const goals = events
         .filter(e => e.type === "goals")
         .sort((a, b) => {
@@ -62,7 +136,7 @@ function formatGoals(events, playersById) {
             e.timestamp === goal.timestamp
         );
 
-        const minuteText = `${goal.minute}'`;
+        const minuteText = `${toDisplayMinute(goal, halfDurationMinutes)}'`;
         const scoreText = `${homeGoals}–${awayGoals}`;
         const playerText = toPlayerLabel(goal.player_id, playersById);
         const assistText = assist ? ` (${toPlayerLabel(assist.player_id, playersById)})` : "";
@@ -73,7 +147,7 @@ function formatGoals(events, playersById) {
     return lines;
 }
 
-function formatCards(events, playersById) {
+function formatCards(events, playersById, halfDurationMinutes) {
     const cards = events
         .filter(e => e.type === "yellow_card" || e.type === "red_card")
         .sort((a, b) => {
@@ -86,7 +160,7 @@ function formatCards(events, playersById) {
 
     return cards.map(card => {
         const symbol = card.type === "red_card" ? "🟥" : "🟨";
-        return `${card.minute}'   ${symbol}   ${toPlayerLabel(card.player_id, playersById)}`;
+        return `${toDisplayMinute(card, halfDurationMinutes)}'   ${symbol}   ${toPlayerLabel(card.player_id, playersById)}`;
     });
 }
 
@@ -96,10 +170,16 @@ function buildSnapshotFromBackend(match, events, playersById) {
     const homeHT = count(events, "goals", "home", 1);
     const awayHT = count(events, "goals", "away", 1);
 
+    const rawHalfDuration = Number(match?.half_duration_minutes);
+    const halfDurationMinutes = Number.isFinite(rawHalfDuration) && rawHalfDuration > 0
+        ? Math.floor(rawHalfDuration)
+        : null;
+
     return {
         header: `${match.home_team_name} - ${match.away_team_name}: ${homeFT} – ${awayFT}  (HT: ${homeHT} – ${awayHT})`,
-        events: formatGoals(events, playersById),
-        cards: formatCards(events, playersById),
+        timeline: buildChronologicalTimeline(events, playersById, halfDurationMinutes),
+        events: formatGoals(events, playersById, halfDurationMinutes),
+        cards: formatCards(events, playersById, halfDurationMinutes),
         stats: [
             formatStatLine(events, "Avslutninger", "shots_total"),
             formatStatLine(events, "Skudd på mål", "shots_target"),
@@ -248,6 +328,69 @@ summaryEl.append(row, htEl);
 // ✅ EVENTS (mål + kort)
 eventsEl.innerHTML = "";
 
+if (Array.isArray(data.timeline) && data.timeline.length > 0) {
+    data.timeline.forEach(item => {
+        if (item.kind === "pause") {
+            const row = document.createElement("div");
+            row.classList.add("event-row", "pause");
+
+            const text = document.createElement("span");
+            text.textContent = "— Pause —";
+
+            row.append(text);
+            eventsEl.appendChild(row);
+            return;
+        }
+
+        if (item.kind === "goal") {
+            const row = document.createElement("div");
+            row.classList.add("event-row", "goal");
+
+            const icon = document.createElement("span");
+            icon.textContent = "⚽";
+
+            const minuteEl = document.createElement("span");
+            minuteEl.textContent = item.minute;
+
+            const scoreEl = document.createElement("span");
+            scoreEl.textContent = item.score;
+
+            const playerEl = document.createElement("span");
+            playerEl.textContent = item.player;
+
+            const assistEl = document.createElement("span");
+            assistEl.textContent = item.assist || "";
+            assistEl.classList.add("assist");
+
+            row.append(icon, minuteEl, scoreEl, playerEl, assistEl);
+            eventsEl.appendChild(row);
+            return;
+        }
+
+        if (item.kind === "card") {
+            const row = document.createElement("div");
+            row.classList.add("event-row", "card");
+
+            const icon = document.createElement("span");
+            icon.textContent = item.icon;
+
+            const minuteEl = document.createElement("span");
+            minuteEl.textContent = item.minute;
+
+            const emptyScore = document.createElement("span");
+            emptyScore.textContent = "";
+
+            const playerEl = document.createElement("span");
+            playerEl.textContent = item.player;
+
+            const spacer = document.createElement("span");
+
+            row.append(icon, minuteEl, emptyScore, playerEl, spacer);
+            eventsEl.appendChild(row);
+        }
+    });
+} else {
+
 // ─────────────────
 // MÅL (kolonner)
 // ─────────────────
@@ -351,6 +494,7 @@ data.cards.forEach(line => {
     row.append(icon, minuteEl, emptyScore, playerEl, spacer);
     eventsEl.appendChild(row);
 });
+}
 
 
 
@@ -418,6 +562,7 @@ data.stats.forEach(line => {
 exportBtn.addEventListener("click", async () => {
 
     const reportEl = document.querySelector(".report-view");
+    const originalScrollTop = reportEl.scrollTop;
 
     // ✅ finn actions (knappene nederst)
     const actions = reportEl.querySelector(".actions-row");
@@ -436,9 +581,65 @@ exportBtn.addEventListener("click", async () => {
     // ✅ litt ekstra luft rundt
     reportEl.style.padding = "20px";
 
+    // ✅ sørg for at hele innholdet rendres, ikke bare synlig viewport
+    const originalHeight = reportEl.style.height;
+    const originalOverflow = reportEl.style.overflow;
+    const originalMaxHeight = reportEl.style.maxHeight;
+    const clientWidth = reportEl.clientWidth;
+    const fullHeight = reportEl.scrollHeight;
+
+    reportEl.style.height = `${fullHeight}px`;
+    reportEl.style.maxHeight = "none";
+    reportEl.style.overflow = "visible";
+
     try {
         const canvas = await html2canvas(reportEl, {
-            scale: 2
+            scale: 2,
+            useCORS: true,
+            backgroundColor: null,
+            scrollY: 0,
+            windowWidth: clientWidth,
+            windowHeight: fullHeight,
+            height: fullHeight,
+            width: clientWidth,
+            onclone: (clonedDoc) => {
+                const clonedReport = clonedDoc.querySelector(".report-view");
+                if (!clonedReport) return;
+
+                const hideScrollbarsStyle = clonedDoc.createElement("style");
+                hideScrollbarsStyle.textContent = `
+                    .report-view {
+                        scrollbar-width: none !important;
+                        -ms-overflow-style: none !important;
+                    }
+
+                    .report-view::-webkit-scrollbar {
+                        width: 0 !important;
+                        height: 0 !important;
+                        display: none !important;
+                    }
+                `;
+                clonedDoc.head.appendChild(hideScrollbarsStyle);
+
+                clonedReport.style.height = `${fullHeight}px`;
+                clonedReport.style.maxHeight = "none";
+                clonedReport.style.overflow = "hidden";
+                clonedReport.style.overflowY = "hidden";
+                clonedReport.style.position = "relative";
+                clonedReport.style.inset = "auto";
+                clonedReport.style.transform = "none";
+                clonedReport.style.width = `${clientWidth}px`;
+                clonedReport.style.boxSizing = "border-box";
+
+                const clonedActions = clonedReport.querySelector(".actions-row");
+                if (clonedActions) {
+                    clonedActions.style.position = "static";
+                    clonedActions.style.bottom = "auto";
+                    clonedActions.style.background = "transparent";
+                    clonedActions.style.boxShadow = "none";
+                    clonedActions.style.borderTop = "none";
+                }
+            }
         });
 
         const imgData = canvas.toDataURL("image/png");
@@ -447,6 +648,10 @@ exportBtn.addEventListener("click", async () => {
         actions.style.display = originalDisplay;
         reportEl.style.background = originalBackground;
         reportEl.style.padding = originalPadding;
+        reportEl.style.height = originalHeight;
+        reportEl.style.maxHeight = originalMaxHeight;
+        reportEl.style.overflow = originalOverflow;
+        reportEl.scrollTop = originalScrollTop;
 
         // ✅ DELING (mobil)
         if (navigator.share) {
@@ -477,6 +682,10 @@ exportBtn.addEventListener("click", async () => {
         actions.style.display = originalDisplay;
         reportEl.style.background = originalBackground;
         reportEl.style.padding = originalPadding;
+        reportEl.style.height = originalHeight;
+        reportEl.style.maxHeight = originalMaxHeight;
+        reportEl.style.overflow = originalOverflow;
+        reportEl.scrollTop = originalScrollTop;
     }
 });
 

@@ -10,7 +10,81 @@ function toPlayerLabel(playerId, playersById) {
     return `#${player.shirt_number ?? "?"} ${player.name}`;
 }
 
-function formatGoals(events, playersById) {
+function toDisplayMinute(event, halfDurationMinutes) {
+    const minuteInHalfRaw = Number(event?.minute);
+    const minuteInHalf = Number.isFinite(minuteInHalfRaw) && minuteInHalfRaw > 0
+        ? Math.floor(minuteInHalfRaw)
+        : 1;
+
+    const halfRaw = Number(event?.half);
+    const half = Number.isFinite(halfRaw) && halfRaw > 0
+        ? Math.floor(halfRaw)
+        : 1;
+
+    if (!Number.isFinite(halfDurationMinutes) || halfDurationMinutes <= 0) {
+        return minuteInHalf;
+    }
+
+    return minuteInHalf + ((half - 1) * halfDurationMinutes);
+}
+
+function buildChronologicalTimeline(events, playersById, halfDurationMinutes) {
+    const timelineEvents = events
+        .filter(e => e.type === "goals" || e.type === "yellow_card" || e.type === "red_card")
+        .sort((a, b) => {
+            if ((a.half ?? 0) !== (b.half ?? 0)) return (a.half ?? 0) - (b.half ?? 0);
+            if ((a.minute ?? 0) !== (b.minute ?? 0)) return (a.minute ?? 0) - (b.minute ?? 0);
+            return (a.timestamp ?? 0) - (b.timestamp ?? 0);
+        });
+
+    const timeline = [];
+    let homeGoals = 0;
+    let awayGoals = 0;
+    let currentHalf = null;
+
+    for (const event of timelineEvents) {
+        if (currentHalf !== null && event.half !== currentHalf) {
+            timeline.push({ kind: "pause" });
+        }
+        currentHalf = event.half;
+
+        if (event.type === "goals") {
+            if (event.team === "home") {
+                homeGoals++;
+            } else {
+                awayGoals++;
+            }
+
+            const assist = events.find(e =>
+                e.type === "assists" &&
+                e.team === event.team &&
+                e.half === event.half &&
+                e.minute === event.minute &&
+                e.timestamp === event.timestamp
+            );
+
+            timeline.push({
+                kind: "goal",
+                minute: `${toDisplayMinute(event, halfDurationMinutes)}'`,
+                score: `${homeGoals}–${awayGoals}`,
+                player: toPlayerLabel(event.player_id, playersById),
+                assist: assist ? `(${toPlayerLabel(assist.player_id, playersById)})` : ""
+            });
+            continue;
+        }
+
+        timeline.push({
+            kind: "card",
+            icon: event.type === "red_card" ? "🟥" : "🟨",
+            minute: `${toDisplayMinute(event, halfDurationMinutes)}'`,
+            player: toPlayerLabel(event.player_id, playersById)
+        });
+    }
+
+    return timeline;
+}
+
+function formatGoals(events, playersById, halfDurationMinutes) {
     const goals = events
         .filter(e => e.type === "goals")
         .sort((a, b) => {
@@ -46,7 +120,7 @@ function formatGoals(events, playersById) {
             e.timestamp === goal.timestamp
         );
 
-        const minuteText = `${goal.minute}'`;
+        const minuteText = `${toDisplayMinute(goal, halfDurationMinutes)}'`;
         const scoreText = `${homeGoals}–${awayGoals}`;
         const playerText = toPlayerLabel(goal.player_id, playersById);
         const assistText = assist ? ` (${toPlayerLabel(assist.player_id, playersById)})` : "";
@@ -57,7 +131,7 @@ function formatGoals(events, playersById) {
     return lines;
 }
 
-function formatCards(events, playersById) {
+function formatCards(events, playersById, halfDurationMinutes) {
     const cards = events
         .filter(e => e.type === "yellow_card" || e.type === "red_card")
         .sort((a, b) => {
@@ -70,7 +144,7 @@ function formatCards(events, playersById) {
 
     return cards.map(card => {
         const symbol = card.type === "red_card" ? "🟥" : "🟨";
-        return `${card.minute}'   ${symbol}   ${toPlayerLabel(card.player_id, playersById)}`;
+        return `${toDisplayMinute(card, halfDurationMinutes)}'   ${symbol}   ${toPlayerLabel(card.player_id, playersById)}`;
     });
 }
 
@@ -97,10 +171,16 @@ function buildSnapshotFromBackend(match, allEventsForMatch, playersById) {
     const homeHT = count(allEventsForMatch, "goals", "home", 1);
     const awayHT = count(allEventsForMatch, "goals", "away", 1);
 
+    const rawHalfDuration = Number(match?.half_duration_minutes);
+    const halfDurationMinutes = Number.isFinite(rawHalfDuration) && rawHalfDuration > 0
+        ? Math.floor(rawHalfDuration)
+        : null;
+
     return {
         header: `${match.home_team_name} - ${match.away_team_name}: ${homeFT} – ${awayFT}  (HT: ${homeHT} – ${awayHT})`,
-        events: formatGoals(allEventsForMatch, playersById),
-        cards: formatCards(allEventsForMatch, playersById),
+        timeline: buildChronologicalTimeline(allEventsForMatch, playersById, halfDurationMinutes),
+        events: formatGoals(allEventsForMatch, playersById, halfDurationMinutes),
+        cards: formatCards(allEventsForMatch, playersById, halfDurationMinutes),
         stats: [
             formatStatLine(allEventsForMatch, "Avslutninger", "shots_total"),
             formatStatLine(allEventsForMatch, "Skudd på mål", "shots_target"),

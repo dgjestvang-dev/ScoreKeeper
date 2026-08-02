@@ -347,6 +347,9 @@ def remove_owner_columns_if_present(cursor):
 
     if table_has_column(cursor, "matches", "owner_user_id"):
         has_created_by = table_has_column(cursor, "matches", "created_by_user_id")
+        has_game_type = table_has_column(cursor, "matches", "game_type")
+        has_game_comment = table_has_column(cursor, "matches", "game_comment")
+        has_half_duration_minutes = table_has_column(cursor, "matches", "half_duration_minutes")
 
         cursor.execute("""
             CREATE TABLE matches_new (
@@ -356,22 +359,44 @@ def remove_owner_columns_if_present(cursor):
                 away_team_id INTEGER,
                 away_team_name TEXT,
                 date TEXT,
+                game_type TEXT,
+                game_comment TEXT,
+                half_duration_minutes INTEGER,
                 created_by_user_id INTEGER
             )
         """)
 
-        if has_created_by:
-            cursor.execute("""
-                INSERT INTO matches_new (id, home_team_id, home_team_name, away_team_id, away_team_name, date, created_by_user_id)
-                SELECT id, home_team_id, home_team_name, away_team_id, away_team_name, date, COALESCE(created_by_user_id, owner_user_id)
-                FROM matches
-            """)
-        else:
-            cursor.execute("""
-                INSERT INTO matches_new (id, home_team_id, home_team_name, away_team_id, away_team_name, date, created_by_user_id)
-                SELECT id, home_team_id, home_team_name, away_team_id, away_team_name, date, owner_user_id
-                FROM matches
-            """)
+        game_type_expr = "game_type" if has_game_type else "NULL"
+        game_comment_expr = "game_comment" if has_game_comment else "NULL"
+        half_duration_expr = "half_duration_minutes" if has_half_duration_minutes else "NULL"
+        created_by_expr = "COALESCE(created_by_user_id, owner_user_id)" if has_created_by else "owner_user_id"
+
+        cursor.execute(f"""
+            INSERT INTO matches_new (
+                id,
+                home_team_id,
+                home_team_name,
+                away_team_id,
+                away_team_name,
+                date,
+                game_type,
+                game_comment,
+                half_duration_minutes,
+                created_by_user_id
+            )
+            SELECT
+                id,
+                home_team_id,
+                home_team_name,
+                away_team_id,
+                away_team_name,
+                date,
+                {game_type_expr},
+                {game_comment_expr},
+                {half_duration_expr},
+                {created_by_expr}
+            FROM matches
+        """)
 
         cursor.execute("DROP TABLE matches")
         cursor.execute("ALTER TABLE matches_new RENAME TO matches")
@@ -549,6 +574,7 @@ def init_db():
             date TEXT,
             game_type TEXT,
             game_comment TEXT,
+            half_duration_minutes INTEGER,
             created_by_user_id INTEGER
         )
     """)
@@ -563,6 +589,7 @@ def init_db():
     ensure_column(cursor, "matches", "created_by_user_id", "INTEGER")
     ensure_column(cursor, "matches", "game_type", "TEXT")
     ensure_column(cursor, "matches", "game_comment", "TEXT")
+    ensure_column(cursor, "matches", "half_duration_minutes", "INTEGER")
 
     remove_customer_model_if_present(cursor)
     remove_owner_columns_if_present(cursor)
@@ -1306,9 +1333,10 @@ def create_match():
             date,
             game_type,
             game_comment,
+            half_duration_minutes,
             created_by_user_id
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         home_team_id,
         data.get("home_team_name"),
@@ -1317,6 +1345,7 @@ def create_match():
         data.get("date"),
         data.get("game_type"),
         data.get("game_comment"),
+        data.get("half_duration_minutes"),
         user_id
     ))
 
@@ -1440,9 +1469,10 @@ def save_match_with_events():
                 date,
                 game_type,
                 game_comment,
+                half_duration_minutes,
                 created_by_user_id
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             home_team_id,
             match.get("home_team_name"),
@@ -1451,6 +1481,7 @@ def save_match_with_events():
             match.get("date"),
             match.get("game_type"),
             match.get("game_comment"),
+            match.get("half_duration_minutes"),
             user_id
         ))
 
