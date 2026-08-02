@@ -78,6 +78,22 @@ export function createClock(halfDurationSeconds) {
         // no-op (timestamp-based)
     }
 
+    function hydrate(state = {}) {
+        const nextHalfRaw = Number(state.currentHalf);
+        const nextElapsedRaw = Number(state.elapsedSeconds);
+
+        currentHalf = Number.isFinite(nextHalfRaw) && nextHalfRaw > 0
+            ? Math.floor(nextHalfRaw)
+            : 1;
+        elapsedSeconds = Number.isFinite(nextElapsedRaw) && nextElapsedRaw >= 0
+            ? Math.floor(nextElapsedRaw)
+            : 0;
+
+        running = Boolean(state.running);
+        hasStarted = Boolean(state.hasStarted) || elapsedSeconds > 0;
+        halfStartTimestamp = running ? Date.now() : null;
+    }
+
     
     
 
@@ -94,6 +110,7 @@ export function createClock(halfDurationSeconds) {
         getCurrentHalf,
         isRunning,
         isInAddedTime,
-        isExpired
+        isExpired,
+        hydrate
     };
 }

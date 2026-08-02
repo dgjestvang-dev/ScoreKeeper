@@ -998,6 +998,7 @@ font-size: 1.1rem;
 .match-controls {
     display: flex;
     align-items: center;
+    justify-content: flex-end;
     gap: 8px;
 
     flex-wrap: nowrap;       
@@ -1039,8 +1040,9 @@ font-size: 1.1rem;
 
 
 .match-controls .primary {
-    flex: 1 1 auto;           /* ✅ grows to fill remaining space */
+    flex: 1 1 0;              /* ✅ grows to fill remaining space */
     min-width: 0;             /* ✅ allows shrinking */
+    min-height: 46px;
     background-color: #82BE83; /* green */
     display: inline-flex;
     align-items: center;
@@ -1082,6 +1084,15 @@ font-size: 1.1rem;
 
 .primary.running .icon-stop {
     display: inline-block;
+}
+
+.match-controls .primary.no-icon {
+    gap: 0;
+}
+
+.match-controls .primary.no-icon .icon-start,
+.match-controls .primary.no-icon .icon-stop {
+    display: none;
 }
 
 
@@ -1308,16 +1319,22 @@ font-size: 1.1rem;
     background: rgba(255, 255, 255, 0.35);
 }
 
-.player-table thead th:first-child,
+.player-table th:first-child,
 .player-table td:first-child {
     text-align: left;
-    width: 56%;
+    width: 48%;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
-.player-table thead th:not(:first-child),
+.player-table th:nth-child(2),
+.player-table td:nth-child(2) {
+    text-align: center;
+    width: 8%;
+}
+
+.player-table thead th:nth-child(n+2),
 .player-cell-stat {
     text-align: center;
     width: 11%;

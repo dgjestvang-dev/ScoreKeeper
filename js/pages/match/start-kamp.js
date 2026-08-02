@@ -13,6 +13,7 @@ import { openPlayerAssign } from "../../components/player-assign-ui.js";
 
 const OWN_GOAL_PLAYER_ID = "__OWN_GOAL__";
 const UNKNOWN_PLAYER_ID = "__UNKNOWN_PLAYER__";
+const LIVE_MATCH_DRAFT_STORAGE_KEY = "sk_live_match_draft_v1";
 
 
 
@@ -27,9 +28,7 @@ let tickIntervalId = null;
 
 let timeEl;
 let startStopBtn;
-let nextHalfBtn;
 let resetMatchBtn;
-let saveMatchBtn;
 
 let homeTeamEl;
 let awayTeamEl;
@@ -43,6 +42,7 @@ let waitingForSecondHalfStart = false;
 let matchEvents = [];
 
 let pendingGoalEvent = null;
+let activeMatchSessionKey = null;
 
 
 // ─────────────────────────────────────────────
@@ -97,11 +97,14 @@ export function initStartKamp() {
         console.error("Controls container not found");
         return;
     }
+    controlsEl.removeEventListener("click", onStatButtonClick);
     controlsEl.addEventListener("click", onStatButtonClick);
 
     const reportBtn = document.getElementById("game-report-btn");
-
-    reportBtn.addEventListener("click", () => {
+    reportBtn.replaceWith(reportBtn.cloneNode(true));
+    const reportBtnClone = document.getElementById("game-report-btn");
+    reportBtnClone.addEventListener("click", () => {
+        persistLiveMatchDraft();
         navigateTo("kamp-rapport");
     });
 
@@ -117,24 +120,25 @@ export function initStartKamp() {
     startStopBtn.replaceWith(startStopBtn.cloneNode(true));
     startStopBtn = document.getElementById("start-stop-btn");
 
-    nextHalfBtn = document.getElementById("next-half-btn");
-    nextHalfBtn.replaceWith(nextHalfBtn.cloneNode(true));
-    nextHalfBtn = document.getElementById("next-half-btn");
-
     resetMatchBtn = document.getElementById("reset-match-btn");
     resetMatchBtn.replaceWith(resetMatchBtn.cloneNode(true));
     resetMatchBtn = document.getElementById("reset-match-btn");
 
-    saveMatchBtn = document.getElementById("save-match-btn");
-    saveMatchBtn.replaceWith(saveMatchBtn.cloneNode(true));
-    saveMatchBtn = document.getElementById("save-match-btn");
-
     
-    // Backend is the only persistence layer; active match state stays in memory.
-    matchEvents = [];
-    hasStarted = false;
-    halfEnded = false;
-    waitingForSecondHalfStart = false;
+    activeMatchSessionKey = buildMatchSessionKey();
+    const restored = restoreLiveMatchDraft();
+
+    if (!restored) {
+        // Backend is the only persistence layer; active match state stays in memory.
+        matchEvents = [];
+        hasStarted = false;
+        halfEnded = false;
+        waitingForSecondHalfStart = false;
+    }
+
+    if (clock.isRunning()) {
+        startTicking();
+    }
 
 
     // Initial render
@@ -146,14 +150,13 @@ export function initStartKamp() {
 
     // Wire controls
     startStopBtn.addEventListener("click", onStartStopClick);
-    nextHalfBtn.addEventListener("click", onNextHalfClick);
     resetMatchBtn.addEventListener("click", onResetMatchClick);
-    saveMatchBtn.addEventListener("click", onBackClick);
 
     
 // Ensure final button state after DOM settles
 requestAnimationFrame(() => {
     updateMatchControls();
+    persistLiveMatchDraft();
 });
 
 
@@ -173,6 +176,20 @@ function reconcileClockState() {
 }
 
 function onStartStopClick() {
+    const running = clock.isRunning();
+    const half = clock.getCurrentHalf();
+
+    if (!running && halfEnded && half === 2) {
+        void onBackClick();
+        return;
+    }
+
+    if (!running && halfEnded && half === 1 && !waitingForSecondHalfStart) {
+        prepareSecondHalf();
+        updateMatchControls();
+        return;
+    }
+
     if (clock.isRunning()) {
         if (clock.isInAddedTime()) {
             endCurrentHalf();
@@ -189,6 +206,7 @@ function onStartStopClick() {
     }
     
     updateMatchControls();
+    persistLiveMatchDraft();
 }
 
 function updateMatchControls() {
@@ -197,32 +215,34 @@ function updateMatchControls() {
     const running = clock.isRunning();
     const half = clock.getCurrentHalf();
     const addedTime = clock.isInAddedTime();
+    let visualMode = "idle";
 
     // Start / Stop button
     if (halfEnded && half === 2) {
-        startStopBtn.disabled = true;
-        startStopBtn.querySelector(".label").textContent = "Slutt";
-    } else if (halfEnded && half === 1) {
-        startStopBtn.disabled = true;
-        startStopBtn.querySelector(".label").textContent = "Pause";
+        startStopBtn.disabled = false;
+        startStopBtn.querySelector(".label").textContent = "Lagre og avslutt kamp";
+        visualMode = "action";
+    } else if (halfEnded && half === 1 && !waitingForSecondHalfStart) {
+        startStopBtn.disabled = false;
+        startStopBtn.querySelector(".label").textContent = "Klargjør for 2. omgang";
+        visualMode = "action";
     } else if (waitingForSecondHalfStart && half === 2 && !running) {
         startStopBtn.disabled = false;
         startStopBtn.querySelector(".label").textContent = "Start 2. omgang";
+        visualMode = "idle";
     } else if (addedTime && running) {
         startStopBtn.disabled = false;
         startStopBtn.querySelector(".label").textContent = "Avslutt omgang";
+        visualMode = "running";
     } else {
         startStopBtn.disabled = false;
         startStopBtn.querySelector(".label").textContent =
             running ? "Stopp" : "Start";
+        visualMode = running ? "running" : "idle";
     }
 
-    startStopBtn.classList.toggle("running", running);
-
-    // Advance to next half
-    nextHalfBtn.disabled = !(halfEnded && half === 1);
-    nextHalfBtn.querySelector(".label").textContent =
-        halfEnded && half === 1 ? "Start 2. omgang" : "start neste omgang";
+    startStopBtn.classList.toggle("running", visualMode === "running");
+    startStopBtn.classList.toggle("no-icon", visualMode === "action");
 
     updateStatControls();
 
@@ -230,7 +250,8 @@ function updateMatchControls() {
         addedTime,
         running,
         half,
-        resetHalfDisabled: nextHalfBtn.disabled
+        halfEnded,
+        waitingForSecondHalfStart
     });
 }
 
@@ -261,6 +282,7 @@ function startTicking() {
         reconcileClockState();
         renderClock();
         updateMatchControls();
+        persistLiveMatchDraft();
     }, 1000);
 }
 
@@ -295,7 +317,7 @@ function renderHalf() {
     halfValueEl.textContent = clock.getCurrentHalf();
 }
 
-function onNextHalfClick() {
+function prepareSecondHalf() {
     if (clock.getCurrentHalf() !== 1 || !halfEnded || clock.isRunning()) {
         return;
     }
@@ -306,6 +328,7 @@ function onNextHalfClick() {
     renderClock();
     renderHalf();
     updateMatchControls();
+    persistLiveMatchDraft();
 }
 
 function endCurrentHalf() {
@@ -314,6 +337,7 @@ function endCurrentHalf() {
     stopTicking();
     renderClock();
     updateMatchControls();
+    persistLiveMatchDraft();
 }
 
 
@@ -647,6 +671,7 @@ function handleDecrement(team, stat) {
 
 function saveAndRender() {
     renderStatsSummary();
+    persistLiveMatchDraft();
 }
 
 
@@ -688,6 +713,7 @@ function finalizeGoalEvent() {
 
     renderScore();
     renderStatsSummary();
+    persistLiveMatchDraft();
 
     pendingGoalEvent = null;
 }
@@ -711,6 +737,7 @@ function rollbackGoalEvent(team) {
 
     renderScore();
     renderStatsSummary();
+    persistLiveMatchDraft();
 }
 
 function finalizeOwnGoal(baseEvent) {
@@ -718,6 +745,7 @@ function finalizeOwnGoal(baseEvent) {
 
     renderScore();
     renderStatsSummary();
+    persistLiveMatchDraft();
 
     pendingGoalEvent = null;
 }
@@ -803,6 +831,7 @@ function onResetMatchClick() {
     matchEvents = [];
     hasStarted = false;
     halfEnded = false;
+    waitingForSecondHalfStart = false;
 
     stopTicking();
     clock.resetGame();
@@ -812,6 +841,7 @@ function onResetMatchClick() {
     renderScore();
     renderStatsSummary();
     updateMatchControls();
+    persistLiveMatchDraft();
     
 }
 
@@ -1174,7 +1204,7 @@ function buildSaveMatchPayload() {
 async function onBackClick() {
 
     const confirmed = confirm(
-        "Vil du lagre og avslutte kampen?\n\nKampdata lagres til backend før kampen lukkes."
+        "Vil du lagre og avslutte kampen?\n\nKampdata lagres før kampen lukkes."
     );
 
     if (!confirmed) return;
@@ -1227,12 +1257,86 @@ async function onBackClick() {
     // ✅ SÅ nullstill kamp
     matchEvents = [];
     hasStarted = false;
+    halfEnded = false;
+    waitingForSecondHalfStart = false;
 
     stopTicking();
     clock?.resetGame?.();
+    clearLiveMatchDraft();
 
     // ✅ til slutt: naviger
     goBack();
+}
+
+function buildMatchSessionKey() {
+    const homeId = matchConfig.homeTeamId ?? "-";
+    const awayId = matchConfig.awayTeamId ?? "-";
+    const homeName = (matchConfig.homeTeamName || "").trim().toLowerCase();
+    const awayName = (matchConfig.awayTeamName || "").trim().toLowerCase();
+    const duration = Number(matchConfig.gametimeMinutes) || 0;
+    const gameType = (matchConfig.gameType || "").trim().toLowerCase();
+    const gameComment = (matchConfig.gameComment || "").trim().toLowerCase();
+
+    return [homeId, awayId, homeName, awayName, duration, gameType, gameComment].join("|");
+}
+
+function persistLiveMatchDraft() {
+    if (!clock || !activeMatchSessionKey) return;
+
+    const payload = {
+        sessionKey: activeMatchSessionKey,
+        savedAt: Date.now(),
+        hasStarted,
+        halfEnded,
+        waitingForSecondHalfStart,
+        matchEvents,
+        clockState: {
+            currentHalf: clock.getCurrentHalf(),
+            elapsedSeconds: clock.getElapsedSeconds(),
+            running: clock.isRunning(),
+            hasStarted: clock.getElapsedSeconds() > 0 || clock.isRunning()
+        }
+    };
+
+    try {
+        sessionStorage.setItem(LIVE_MATCH_DRAFT_STORAGE_KEY, JSON.stringify(payload));
+    } catch (error) {
+        console.warn("Kunne ikke lagre kamputkast lokalt", error);
+    }
+}
+
+function restoreLiveMatchDraft() {
+    if (!clock || !activeMatchSessionKey) return false;
+
+    try {
+        const raw = sessionStorage.getItem(LIVE_MATCH_DRAFT_STORAGE_KEY);
+        if (!raw) return false;
+
+        const draft = JSON.parse(raw);
+        if (!draft || draft.sessionKey !== activeMatchSessionKey) return false;
+
+        matchEvents = Array.isArray(draft.matchEvents) ? draft.matchEvents : [];
+        hasStarted = Boolean(draft.hasStarted);
+        halfEnded = Boolean(draft.halfEnded);
+        waitingForSecondHalfStart = Boolean(draft.waitingForSecondHalfStart);
+
+        if (draft.clockState && typeof clock.hydrate === "function") {
+            clock.hydrate(draft.clockState);
+        }
+
+        return true;
+    } catch (error) {
+        console.warn("Kunne ikke gjenopprette kamputkast", error);
+        return false;
+    }
+}
+
+function clearLiveMatchDraft() {
+    try {
+        sessionStorage.removeItem(LIVE_MATCH_DRAFT_STORAGE_KEY);
+    } catch (error) {
+        console.warn("Kunne ikke fjerne kamputkast", error);
+    }
 }
 
 

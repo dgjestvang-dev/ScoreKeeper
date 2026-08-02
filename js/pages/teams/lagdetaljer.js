@@ -91,6 +91,7 @@ function renderPlayerTable(players, statsByPlayerId) {
     thead.innerHTML = `
         <tr>
             <th>Spiller</th>
+            <th>K</th>
             <th>m</th>
             <th>a</th>
             <th>gk</th>
@@ -107,13 +108,20 @@ function renderPlayerTable(players, statsByPlayerId) {
         row.dataset.nav = "rediger-spiller";
 
         const key = String(player.id);
-        const stats = statsByPlayerId.get(key) ?? { goals: 0, assists: 0, yellowCard: 0, redCard: 0 };
+        const stats = statsByPlayerId.get(key) ?? {
+            matches: 0,
+            goals: 0,
+            assists: 0,
+            yellowCard: 0,
+            redCard: 0
+        };
 
         const playerCell = document.createElement("td");
         playerCell.className = "player-cell-name";
         playerCell.textContent = `#${player.shirt} ${player.name}`;
 
         row.appendChild(playerCell);
+        row.appendChild(createStatCell(stats.matches));
         row.appendChild(createStatCell(stats.goals));
         row.appendChild(createStatCell(stats.assists));
         row.appendChild(createStatCell(stats.yellowCard));
@@ -141,8 +149,11 @@ async function loadPlayerStatsForTeam(teamId, players) {
     const defaultStats = new Map(
         (players || []).map(player => [
             String(player.id),
-            { goals: 0, assists: 0, yellowCard: 0, redCard: 0 }
+            { matches: 0, goals: 0, assists: 0, yellowCard: 0, redCard: 0 }
         ])
+    );
+    const playerMatchIds = new Map(
+        (players || []).map(player => [String(player.id), new Set()])
     );
 
     try {
@@ -180,6 +191,7 @@ async function loadPlayerStatsForTeam(teamId, players) {
             const key = String(playerId);
             const current = defaultStats.get(key);
             if (!current) continue;
+            playerMatchIds.get(key)?.add(matchId);
 
             if (event.type === "goals") {
                 current.goals += 1;
@@ -190,6 +202,12 @@ async function loadPlayerStatsForTeam(teamId, players) {
             } else if (event.type === "red_card") {
                 current.redCard += 1;
             }
+        }
+
+        for (const [key, matchIds] of playerMatchIds.entries()) {
+            const current = defaultStats.get(key);
+            if (!current) continue;
+            current.matches = matchIds.size;
         }
 
         return defaultStats;
