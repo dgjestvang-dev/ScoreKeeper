@@ -26,7 +26,7 @@ function formatStatLine(events, label, type) {
     const awayFull = count(events, type, "away");
     const homeHT = count(events, type, "home", 1);
     const awayHT = count(events, type, "away", 1);
-    return `${label}: ${homeFull} – ${awayFull} (HT: ${homeHT} – ${awayHT})`;
+    return `${label}: ${homeFull} – ${awayFull} (1.omg: ${homeHT} – ${awayHT})`;
 }
 
 function toDisplayMinute(event, halfDurationMinutes) {
@@ -200,7 +200,7 @@ function buildSnapshotFromBackend(match, events, playersById) {
         : null;
 
     return {
-        header: `${match.home_team_name} - ${match.away_team_name}: ${homeFT} – ${awayFT}  (HT: ${homeHT} – ${awayHT})`,
+        header: `${match.home_team_name} - ${match.away_team_name}: ${homeFT} – ${awayFT}  (1.omg: ${homeHT} – ${awayHT})`,
         timeline: buildChronologicalTimeline(events, playersById, halfDurationMinutes),
         events: formatGoals(events, playersById, halfDurationMinutes),
         cards: formatCards(events, playersById, halfDurationMinutes),
@@ -282,7 +282,7 @@ export async function initKampRapport() {
 
 
     // 🔍 parse header
-// "Frisk Asker G13 - teb: 2 – 1  (HT: 1 – 0)"
+// "Frisk Asker G13 - teb: 2 – 1  (1.omg: 1 – 0)"
 
 
 const header = data.header;
@@ -301,8 +301,8 @@ const scorePart = header.substring(firstColon + 1).trim();
 const scoreMatch = scorePart.match(/\d+\s–\s\d+/);
 const score = scoreMatch ? scoreMatch[0] : "";
 
-// HT riktig hentet ✅
-const htMatch = scorePart.match(/\(HT:\s*(.*?)\)/);
+// Hent første-omgang score (stotter ogsa eldre HT-format)
+const htMatch = scorePart.match(/\((?:HT|1\.omg):\s*(.*?)\)/);
 const ht = htMatch ? htMatch[1] : "";
 
 
@@ -538,14 +538,14 @@ data.stats.forEach(line => {
     const label = line.substring(0, firstColon);
     const rest = line.substring(firstColon + 1).trim();
 
-    // ✅ trekk ut FULL og HT
+    // ✅ trekk ut FULL og 1.omg/HT
     let full = rest;
     let ht = "";
 
-    const htStart = rest.indexOf("(HT:");
-    if (htStart !== -1) {
-        full = rest.substring(0, htStart).trim();
-        ht = rest.substring(htStart + 4).replace(")", "").trim();
+    const firstHalfMatch = rest.match(/\((?:HT|1\.omg):\s*(.*?)\)/);
+    if (firstHalfMatch) {
+        full = rest.replace(firstHalfMatch[0], "").trim();
+        ht = firstHalfMatch[1];
     }
 
     // ✅ split score

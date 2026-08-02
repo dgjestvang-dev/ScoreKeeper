@@ -7,6 +7,7 @@ let homeInput;
 let awayInput;
 let gameTypeInput;
 let gameCommentInput;
+let numberOfHalvesInput;
 
 export async function initKampdag() {
     startMatchBtn = document.querySelector('#kampdag [data-nav="start-kamp"]');
@@ -15,8 +16,9 @@ export async function initKampdag() {
     awayInput = document.getElementById("away-team");
     gameTypeInput = document.getElementById("game-type");
     gameCommentInput = document.getElementById("game-comment");
+    numberOfHalvesInput = document.getElementById("number-of-halves");
 
-    if (!startMatchBtn || !gametimeInput || !homeInput || !awayInput || !gameTypeInput || !gameCommentInput) {
+    if (!startMatchBtn || !gametimeInput || !homeInput || !awayInput || !gameTypeInput || !gameCommentInput || !numberOfHalvesInput) {
         console.error("Kampdag elements not found");
         return;
     }
@@ -25,7 +27,10 @@ export async function initKampdag() {
 
     gameTypeInput.value = matchConfig.gameType || "";
     gameCommentInput.value = matchConfig.gameComment || "";
+    numberOfHalvesInput.value = String(matchConfig.numberOfHalves || 2);
 
+    startMatchBtn.replaceWith(startMatchBtn.cloneNode(true));
+    startMatchBtn = document.querySelector('#kampdag [data-nav="start-kamp"]');
     startMatchBtn.addEventListener("click", onStartMatchClick);
 }
 
@@ -58,6 +63,7 @@ async function populateTeamOptions() {
 
 function onStartMatchClick() {
     const minutes = Number(gametimeInput.value);
+    const numberOfHalves = Number(numberOfHalvesInput.value);
     const homeTeamName = homeInput.value.trim();
     const awayTeamName = awayInput.value.trim();
     const gameType = gameTypeInput.value.trim();
@@ -65,6 +71,11 @@ function onStartMatchClick() {
 
     if (!minutes || minutes <= 0) {
         alert("Ugyldig omgangstid");
+        return;
+    }
+
+    if (!Number.isFinite(numberOfHalves) || numberOfHalves < 1 || numberOfHalves > 3) {
+        alert("Antall omganger må være 1, 2 eller 3");
         return;
     }
 
@@ -84,6 +95,7 @@ function onStartMatchClick() {
     }
 
     matchConfig.gametimeMinutes = minutes;
+    matchConfig.numberOfHalves = Math.floor(numberOfHalves);
     matchConfig.homeTeamName = homeTeamName;
     matchConfig.awayTeamName = awayTeamName;
     matchConfig.gameType = gameType;

@@ -234,12 +234,13 @@ def remove_customer_model_if_present(cursor):
                 away_team_id INTEGER,
                 away_team_name TEXT,
                 date TEXT,
+                number_of_halves INTEGER DEFAULT 2,
                 created_by_user_id INTEGER
             )
         """)
         cursor.execute("""
-            INSERT INTO matches_new (id, home_team_id, home_team_name, away_team_id, away_team_name, date, created_by_user_id)
-            SELECT id, home_team_id, home_team_name, away_team_id, away_team_name, date, owner_user_id
+            INSERT INTO matches_new (id, home_team_id, home_team_name, away_team_id, away_team_name, date, number_of_halves, created_by_user_id)
+            SELECT id, home_team_id, home_team_name, away_team_id, away_team_name, date, 2, owner_user_id
             FROM matches
         """)
         cursor.execute("DROP TABLE matches")
@@ -350,6 +351,7 @@ def remove_owner_columns_if_present(cursor):
         has_game_type = table_has_column(cursor, "matches", "game_type")
         has_game_comment = table_has_column(cursor, "matches", "game_comment")
         has_half_duration_minutes = table_has_column(cursor, "matches", "half_duration_minutes")
+        has_number_of_halves = table_has_column(cursor, "matches", "number_of_halves")
 
         cursor.execute("""
             CREATE TABLE matches_new (
@@ -362,6 +364,7 @@ def remove_owner_columns_if_present(cursor):
                 game_type TEXT,
                 game_comment TEXT,
                 half_duration_minutes INTEGER,
+                number_of_halves INTEGER DEFAULT 2,
                 created_by_user_id INTEGER
             )
         """)
@@ -369,6 +372,7 @@ def remove_owner_columns_if_present(cursor):
         game_type_expr = "game_type" if has_game_type else "NULL"
         game_comment_expr = "game_comment" if has_game_comment else "NULL"
         half_duration_expr = "half_duration_minutes" if has_half_duration_minutes else "NULL"
+        number_of_halves_expr = "number_of_halves" if has_number_of_halves else "2"
         created_by_expr = "COALESCE(created_by_user_id, owner_user_id)" if has_created_by else "owner_user_id"
 
         cursor.execute(f"""
@@ -382,6 +386,7 @@ def remove_owner_columns_if_present(cursor):
                 game_type,
                 game_comment,
                 half_duration_minutes,
+                number_of_halves,
                 created_by_user_id
             )
             SELECT
@@ -394,6 +399,7 @@ def remove_owner_columns_if_present(cursor):
                 {game_type_expr},
                 {game_comment_expr},
                 {half_duration_expr},
+                {number_of_halves_expr},
                 {created_by_expr}
             FROM matches
         """)
@@ -575,6 +581,7 @@ def init_db():
             game_type TEXT,
             game_comment TEXT,
             half_duration_minutes INTEGER,
+            number_of_halves INTEGER DEFAULT 2,
             created_by_user_id INTEGER
         )
     """)
@@ -590,6 +597,7 @@ def init_db():
     ensure_column(cursor, "matches", "game_type", "TEXT")
     ensure_column(cursor, "matches", "game_comment", "TEXT")
     ensure_column(cursor, "matches", "half_duration_minutes", "INTEGER")
+    ensure_column(cursor, "matches", "number_of_halves", "INTEGER DEFAULT 2")
 
     remove_customer_model_if_present(cursor)
     remove_owner_columns_if_present(cursor)
@@ -1316,6 +1324,13 @@ def create_match():
 
     data = request.json or {}
     home_team_id = data.get("home_team_id")
+    number_of_halves_raw = data.get("number_of_halves", 2)
+
+    try:
+        number_of_halves = int(number_of_halves_raw)
+    except (TypeError, ValueError):
+        number_of_halves = 2
+    number_of_halves = max(1, min(3, number_of_halves))
 
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -1334,9 +1349,10 @@ def create_match():
             game_type,
             game_comment,
             half_duration_minutes,
+            number_of_halves,
             created_by_user_id
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         home_team_id,
         data.get("home_team_name"),
@@ -1346,6 +1362,7 @@ def create_match():
         data.get("game_type"),
         data.get("game_comment"),
         data.get("half_duration_minutes"),
+        number_of_halves,
         user_id
     ))
 
@@ -1452,6 +1469,13 @@ def save_match_with_events():
         match = data.get("match") or {}
         events = data.get("events", [])
         home_team_id = match.get("home_team_id")
+        number_of_halves_raw = match.get("number_of_halves", 2)
+
+        try:
+            number_of_halves = int(number_of_halves_raw)
+        except (TypeError, ValueError):
+            number_of_halves = 2
+        number_of_halves = max(1, min(3, number_of_halves))
 
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -1470,9 +1494,10 @@ def save_match_with_events():
                 game_type,
                 game_comment,
                 half_duration_minutes,
+                number_of_halves,
                 created_by_user_id
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             home_team_id,
             match.get("home_team_name"),
@@ -1482,6 +1507,7 @@ def save_match_with_events():
             match.get("game_type"),
             match.get("game_comment"),
             match.get("half_duration_minutes"),
+            number_of_halves,
             user_id
         ))
 

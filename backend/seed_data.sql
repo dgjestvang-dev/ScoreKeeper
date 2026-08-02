@@ -52,9 +52,10 @@ CREATE TABLE matches (
             game_type TEXT,
             game_comment TEXT,
             half_duration_minutes INTEGER,
+            number_of_halves INTEGER DEFAULT 2,
             created_by_user_id INTEGER
         );
-INSERT INTO "matches" VALUES(7,1,'Frisk Asker G13',NULL,'Bærum','2026-07-21',NULL,NULL,35,1);
+INSERT INTO "matches" VALUES(7,1,'Frisk Asker G13',NULL,'Bærum','2026-07-21',NULL,NULL,35,2,1);
 CREATE TABLE players (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             team_id INTEGER,

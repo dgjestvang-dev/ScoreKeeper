@@ -186,7 +186,7 @@ function formatStatLine(events, label, type) {
     const homeHT = count(events, type, "home", 1);
     const awayHT = count(events, type, "away", 1);
 
-    return `${label}: ${homeFull} – ${awayFull} (HT: ${homeHT} – ${awayHT})`;
+    return `${label}: ${homeFull} – ${awayFull} (1.omg: ${homeHT} – ${awayHT})`;
 }
 
 function buildSnapshotFromBackend(match, allEventsForMatch, playersById) {
@@ -201,7 +201,7 @@ function buildSnapshotFromBackend(match, allEventsForMatch, playersById) {
         : null;
 
     return {
-        header: `${match.home_team_name} - ${match.away_team_name}: ${homeFT} – ${awayFT}  (HT: ${homeHT} – ${awayHT})`,
+        header: `${match.home_team_name} - ${match.away_team_name}: ${homeFT} – ${awayFT}  (1.omg: ${homeHT} – ${awayHT})`,
         timeline: buildChronologicalTimeline(allEventsForMatch, playersById, halfDurationMinutes),
         events: formatGoals(allEventsForMatch, playersById, halfDurationMinutes),
         cards: formatCards(allEventsForMatch, playersById, halfDurationMinutes),
@@ -281,7 +281,7 @@ export async function initHistorikk() {
             item.classList.add("history-item");
 
             const { header } = match.data;
-            const cleanedHeader = header.replace(/\s*\(HT:.*?\)/, "");
+            const cleanedHeader = header.replace(/\s*\((?:HT|1\.omg):.*?\)/, "");
 
             const date = new Date(match.date).toLocaleDateString();
             

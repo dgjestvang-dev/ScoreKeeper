@@ -3,6 +3,7 @@
 
 export const matchConfig = {
     gametimeMinutes: null,
+    numberOfHalves: 2,
     homeTeamName: "",
     awayTeamName: "",
     gameType: "",

@@ -29,6 +29,7 @@ let tickIntervalId = null;
 let timeEl;
 let startStopBtn;
 let resetMatchBtn;
+let liveBackBtn;
 
 let homeTeamEl;
 let awayTeamEl;
@@ -104,6 +105,9 @@ export function initStartKamp() {
     reportBtn.replaceWith(reportBtn.cloneNode(true));
     const reportBtnClone = document.getElementById("game-report-btn");
     reportBtnClone.addEventListener("click", () => {
+        // Avoid stale history selection overriding live report data.
+        window.__selectedMatchId = null;
+        window.__selectedMatchData = null;
         persistLiveMatchDraft();
         navigateTo("kamp-rapport");
     });
@@ -123,6 +127,10 @@ export function initStartKamp() {
     resetMatchBtn = document.getElementById("reset-match-btn");
     resetMatchBtn.replaceWith(resetMatchBtn.cloneNode(true));
     resetMatchBtn = document.getElementById("reset-match-btn");
+
+    liveBackBtn = document.getElementById("live-back-btn");
+    liveBackBtn.replaceWith(liveBackBtn.cloneNode(true));
+    liveBackBtn = document.getElementById("live-back-btn");
 
     
     activeMatchSessionKey = buildMatchSessionKey();
@@ -151,6 +159,7 @@ export function initStartKamp() {
     // Wire controls
     startStopBtn.addEventListener("click", onStartStopClick);
     resetMatchBtn.addEventListener("click", onResetMatchClick);
+    liveBackBtn.addEventListener("click", onLiveBackClick);
 
     
 // Ensure final button state after DOM settles
@@ -178,14 +187,15 @@ function reconcileClockState() {
 function onStartStopClick() {
     const running = clock.isRunning();
     const half = clock.getCurrentHalf();
+    const totalHalves = getNumberOfHalves();
 
-    if (!running && halfEnded && half === 2) {
+    if (!running && halfEnded && half >= totalHalves) {
         void onBackClick();
         return;
     }
 
-    if (!running && halfEnded && half === 1 && !waitingForSecondHalfStart) {
-        prepareSecondHalf();
+    if (!running && halfEnded && half < totalHalves && !waitingForSecondHalfStart) {
+        prepareNextHalf();
         updateMatchControls();
         return;
     }
@@ -214,21 +224,22 @@ function updateMatchControls() {
 
     const running = clock.isRunning();
     const half = clock.getCurrentHalf();
+    const totalHalves = getNumberOfHalves();
     const addedTime = clock.isInAddedTime();
     let visualMode = "idle";
 
     // Start / Stop button
-    if (halfEnded && half === 2) {
+    if (halfEnded && half >= totalHalves) {
         startStopBtn.disabled = false;
         startStopBtn.querySelector(".label").textContent = "Lagre og avslutt kamp";
         visualMode = "action";
-    } else if (halfEnded && half === 1 && !waitingForSecondHalfStart) {
+    } else if (halfEnded && half < totalHalves && !waitingForSecondHalfStart) {
         startStopBtn.disabled = false;
-        startStopBtn.querySelector(".label").textContent = "Klargjør for 2. omgang";
+        startStopBtn.querySelector(".label").textContent = `Klargjør ${half + 1}. omgang`;
         visualMode = "action";
-    } else if (waitingForSecondHalfStart && half === 2 && !running) {
+    } else if (waitingForSecondHalfStart && half > 1 && !running) {
         startStopBtn.disabled = false;
-        startStopBtn.querySelector(".label").textContent = "Start 2. omgang";
+        startStopBtn.querySelector(".label").textContent = `Start ${half}. omgang`;
         visualMode = "idle";
     } else if (addedTime && running) {
         startStopBtn.disabled = false;
@@ -314,11 +325,14 @@ function renderTeams() {
 
 function renderHalf() {
     if (!halfValueEl) return;
-    halfValueEl.textContent = clock.getCurrentHalf();
+    halfValueEl.textContent = `${clock.getCurrentHalf()} / ${getNumberOfHalves()}`;
 }
 
-function prepareSecondHalf() {
-    if (clock.getCurrentHalf() !== 1 || !halfEnded || clock.isRunning()) {
+function prepareNextHalf() {
+    const currentHalf = clock.getCurrentHalf();
+    const totalHalves = getNumberOfHalves();
+
+    if (currentHalf >= totalHalves || !halfEnded || clock.isRunning()) {
         return;
     }
 
@@ -879,7 +893,7 @@ function formatStatLine(label, type) {
     const homeHT = countEvents({ type, team: "home", half: 1 }) || 0;
     const awayHT = countEvents({ type, team: "away", half: 1 }) || 0;
 
-    return `${label}: ${homeFull} – ${awayFull} (HT: ${homeHT} – ${awayHT})`;
+    return `${label}: ${homeFull} – ${awayFull} (1.omg: ${homeHT} – ${awayHT})`;
 }
 
 
@@ -1146,7 +1160,7 @@ export function buildMatchSummaryParts() {
     const awayHT = countEvents({ type: "goals", team: "away", half: 1 });
     
     return {
-        header: `${home} - ${away}: ${homeFT} – ${awayFT}  (HT: ${homeHT} – ${awayHT})`,
+        header: `${home} - ${away}: ${homeFT} – ${awayFT}  (1.omg: ${homeHT} – ${awayHT})`,
         timeline: buildChronologicalTimelineForSummary(),
         events: formatGoalsWithPlayers().split("\n"),
         cards: formatCardsWithPlayers().split("\n"),
@@ -1194,6 +1208,7 @@ function buildSaveMatchPayload() {
             game_type: matchConfig.gameType,
             game_comment: matchConfig.gameComment,
             half_duration_minutes: matchConfig.gametimeMinutes,
+            number_of_halves: getNumberOfHalves(),
             date: today
         },
         events: matchEvents.map(mapEventForBackend)
@@ -1268,16 +1283,41 @@ async function onBackClick() {
     goBack();
 }
 
+function onLiveBackClick() {
+    const hasAnyEvent = Array.isArray(matchEvents) && matchEvents.length > 0;
+    const hasClockProgress = Boolean(clock) && Number(clock.getElapsedSeconds?.() || 0) > 0;
+    const isStarted = hasStarted || hasAnyEvent || hasClockProgress;
+
+    if (isStarted) {
+        const confirmed = confirm(
+            "Kampen er startet.Vil du gå tilbake uten å lagre kampen?"
+        );
+        if (!confirmed) return;
+    }
+
+    persistLiveMatchDraft();
+    goBack();
+}
+
 function buildMatchSessionKey() {
     const homeId = matchConfig.homeTeamId ?? "-";
     const awayId = matchConfig.awayTeamId ?? "-";
     const homeName = (matchConfig.homeTeamName || "").trim().toLowerCase();
     const awayName = (matchConfig.awayTeamName || "").trim().toLowerCase();
     const duration = Number(matchConfig.gametimeMinutes) || 0;
+    const numberOfHalves = getNumberOfHalves();
     const gameType = (matchConfig.gameType || "").trim().toLowerCase();
     const gameComment = (matchConfig.gameComment || "").trim().toLowerCase();
 
-    return [homeId, awayId, homeName, awayName, duration, gameType, gameComment].join("|");
+    return [homeId, awayId, homeName, awayName, duration, numberOfHalves, gameType, gameComment].join("|");
+}
+
+function getNumberOfHalves() {
+    const raw = Number(matchConfig.numberOfHalves);
+    if (!Number.isFinite(raw) || raw < 1) {
+        return 2;
+    }
+    return Math.max(1, Math.floor(raw));
 }
 
 function persistLiveMatchDraft() {
